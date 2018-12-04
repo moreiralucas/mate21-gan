@@ -1,3 +1,5 @@
+source/output/
+source/__pycache__/
 data_part1/
-venv/
+env/
 .vscode
