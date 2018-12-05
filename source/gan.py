@@ -10,14 +10,6 @@ from data import Dataset
 from parameters import Parameters
 
 
-# p = Parameters()
-# d = Dataset()
-# train, classes_train = d.load_multiclass_dataset(p.TRAIN_FOLDER, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, p.NUM_CHANNELS)
-# train = d.shuffle(train[0], train[1], seed=42)
-
-# train, val = d.split(train[0], train[1], p.SPLIT_RATE)
-# train = d.augmentation(train[0], train[1])
-
 class Net():
     # ---------------------------------------------------------------------------------------------------------- #
     # Description:                                                                                               #
@@ -37,39 +29,54 @@ class Net():
         self.graph = tf.Graph()
         with self.graph.as_default():
             self.X = tf.placeholder(tf.float32, shape = (None, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, p.NUM_CHANNELS))
-            self.y = tf.placeholder(tf.int64, shape = (None,))
-            self.y_one_hot = tf.one_hot(self.y, size_class_train)
+            # self.y = tf.placeholder(tf.int64, shape = (None,))
+            # self.y_one_hot = tf.one_hot(self.y, size_class_train)
             self.learning_rate = tf.placeholder(tf.float32)
             self.is_training = tf.placeholder(tf.bool)
             print(self.X.shape)
+            with tf.variable_scope('encoder'):
+                # self.X = tf.layers.dropout(self.X, 0.2, training=self.is_training) # Dropout
+                self.out = tf.layers.conv2d(self.X, 4, (3, 3), (1, 1), padding='same', activation=tf.nn.relu)
+                print(self.out.shape)
+                
+                self.out = tf.layers.max_pooling2d(self.out, (2, 2), (2, 2), padding='same')
+                print(self.out.shape)
 
-            self.X = tf.layers.dropout(self.X, 0.2, training=self.is_training) # Dropout
-            self.out = tf.layers.conv2d(self.X, 32, (3, 3), (1, 1), padding='valid', activation=tf.nn.relu)
-            print(self.out.shape)
-            self.out = tf.layers.max_pooling2d(self.out, (2, 2), (2, 2), padding='valid')
-            print(self.out.shape)
+                self.out = tf.layers.conv2d(self.out, 16, (3, 3), (2, 2), padding='same', activation=tf.nn.relu)
+                print(self.out.shape)
             
-            self.out = tf.layers.conv2d(self.out, 64, (3, 3), (2, 2), padding='valid', activation=tf.nn.relu)
-            self.out = tf.layers.max_pooling2d(self.out, (2, 2), (2, 2), padding='valid')
-            print(self.out.shape)
+                self.out = tf.layers.max_pooling2d(self.out, (2, 2), (2, 2), padding='same')
+                print(self.out.shape)
             
-            self.out = tf.layers.conv2d(self.out, 128, (3, 3), (2, 2), padding='valid', activation=tf.nn.relu)
-            print(self.out.shape)
-            self.out = tf.layers.max_pooling2d(self.out, (3, 3), (2, 2), padding='valid')
+            with tf.variable_scope('decoder'):
+                self.out = tf.layers.conv2d_transpose(self.out, 4, (3, 3), (2, 2), padding='same', activation=tf.nn.relu)
+                print(self.out.shape)
 
-            self.out = tf.layers.dropout(self.out, 0.3, training=self.is_training) # Dropout
-            print(self.out.shape)
+                self.out = tf.layers.conv2d_transpose(self.out, 1, (3, 3), (2, 2), padding='same', activation=tf.nn.relu)
+                print(self.out.shape)
 
-            self.out = tf.reshape(self.out, [-1, self.out.shape[1]*self.out.shape[2]*self.out.shape[3]])
+            decoder_variables = [v for v in tf.global_variables() if v.name.startswith('decoder')]
+            encoder_variables = [v for v in tf.global_variables() if v.name.startswith('encoder')]
+            
+            print(decoder_variables)
+            print(encoder_variables)
+                        
+            # self.out = tf.layers.max_pooling2d(self.out, (3, 3), (2, 2), padding='valid')
 
-            self.out = tf.layers.dense(self.out, size_class_train, activation=tf.nn.sigmoid)
+            # self.out = tf.layers.dropout(self.out, 0.3, training=self.is_training) # Dropout
+            # print(self.out.shape)
 
-            self.loss = tf.reduce_mean(tf.losses.softmax_cross_entropy(self.y_one_hot, self.out))
+            # self.out = tf.reshape(self.out, [-1, self.out.shape[1]*self.out.shape[2]*self.out.shape[3]])
 
-            self.train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss)
+            # self.out = tf.layers.dense(self.out, size_class_train, activation=tf.nn.sigmoid)
 
-            self.result = tf.argmax(self.out, 1)
-            self.correct = tf.reduce_sum(tf.cast(tf.equal(self.result, self.y), tf.float32))
+            self.loss = tf.reduce_mean(tf.reduce_sum((self.out - self.X)**2))
+
+            self.encoder_train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss, var_list=encoder_variables)
+            self.decoder_train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss, var_list=decoder_variables)
+
+            # self.result = tf.argmax(self.out, 1)
+            # self.correct = tf.reduce_sum(tf.cast(tf.equal(self.result, self.y), tf.float32))
 
     # ---------------------------------------------------------------------------------------------------------- #
     # Description:                                                                                               #
@@ -91,8 +98,9 @@ class Net():
             for epoch in range(p.NUM_EPOCHS_FULL):
                 print('Epoch: '+ str(epoch+1), end=' ')
                 lr = (p.S_LEARNING_RATE_FULL*(p.NUM_EPOCHS_FULL-epoch-1)+p.F_LEARNING_RATE_FULL*epoch)/(p.NUM_EPOCHS_FULL-1)
-                self.training_epoch(session, self.train_op, lr)
-                val_acc, val_loss = self.evaluation(session, self.val[0], self.val[1], name='Validation')
+                self.training_epoch(session, lr)
+                # val_acc, val_loss = self.evaluation(session, self.val[0], self.val[1], name='Validation')
+                
                 # Otimizar o early stopping
                 if val_acc > best_acc:
                     menor_loss = val_loss
@@ -100,41 +108,37 @@ class Net():
                     epoca = epoch
                     saver.save(session, os.path.join(p.LOG_DIR, 'model.ckpt'))
                     print ('The model has successful saved')
-                # else:
-                #     contador += 1
-                #     if contador > p.TOLERANCE:
-                #         print('The train has stopped')
-                #         break
-                #         print('O treino deveria ter parado se estivesse usando o early stopping')
-                #     print ('The model hasn\'t saved')
-                # break #TODO
+                cv2.imshow('input', self.train.reshape(p.IMAGE_HEIGHT, p;IMAGE_WIDTH))
+                rec = session.run(self.out, feed_dict={X: self.train[0:0+1], is_training: False})
+                cv2.imshow('output', rec[0].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
+                cv2.waitKey(0)
                 print ('\n-********************************************************-')
 
             print ("Best_acc : " + str(best_acc) + ", loss: " + str(menor_loss) + ", epoca: " + str(epoca)) 
     
-    def prediction(self, test, classes_train):
-        print ('-********************************************************-')
-        print ('Start prediction ...')
-        #p = Parameters()
-        with tf.Session(graph = self.graph) as session:
-            outputs = None
-            time_now = datetime.datetime.now()
-            path_txt = str(time_now.day) + '_' + str(time_now.hour) + 'h'  + str(time_now.minute) + 'm.txt'
-            with open(path_txt, 'w') as f:
-                for j in range(len(test[0])):
-                    feed_dict={self.X: np.reshape(test[0][j], (1, ) + test[0][j].shape), self.is_training: False}
-                    saida = session.run(self.out, feed_dict)
-                    outputs = np.array(saida[0])
-                    resp = str(test[1][j]) +' ' + str(np.argmax(outputs)) + '\n'
-                    f.write(resp)
-                f.close()
+    # def prediction(self, test, classes_train):
+    #     print ('-********************************************************-')
+    #     print ('Start prediction ...')
+    #     #p = Parameters()
+    #     with tf.Session(graph = self.graph) as session:
+    #         outputs = None
+    #         time_now = datetime.datetime.now()
+    #         path_txt = str(time_now.day) + '_' + str(time_now.hour) + 'h'  + str(time_now.minute) + 'm.txt'
+    #         with open(path_txt, 'w') as f:
+    #             for j in range(len(test[0])):
+    #                 feed_dict={self.X: np.reshape(test[0][j], (1, ) + test[0][j].shape), self.is_training: False}
+    #                 saida = session.run(self.out, feed_dict)
+    #                 outputs = np.array(saida[0])
+    #                 resp = str(test[1][j]) +' ' + str(np.argmax(outputs)) + '\n'
+    #                 f.write(resp)
+    #             f.close()
     
-    def prediction2(self, test, classes_train):
-        p = Parameters()
-        tf.reset_default_graph()
-        saver = tf.train.Saver()
-        with tf.Session() as session:
-            saver.restore(session, os.path.join(p.LOG_DIR, 'model.ckpt'))  
+    # def prediction2(self, test, classes_train):
+    #     p = Parameters()
+    #     tf.reset_default_graph()
+    #     saver = tf.train.Saver()
+    #     with tf.Session() as session:
+    #         saver.restore(session, os.path.join(p.LOG_DIR, 'model.ckpt'))  
     # ---------------------------------------------------------------------------------------------------------- #
     # Description:                                                                                               #
     #         Evaluate images in Xv with labels in yv.                                                           #
@@ -149,31 +153,38 @@ class Net():
             eval_loss += ret[0]*min(p.BATCH_SIZE, len(Xv)-j)
             eval_acc += ret[1]
 
-        print('Time:'+str(time.time()-start)+' ACC:'+str(eval_acc/len(Xv))+' Loss:'+str(eval_loss/len(Xv)))
+        print(name+' Time:'+str(time.time()-start)+' ACC:'+str(eval_acc/len(Xv))+' Loss:'+str(eval_loss/len(Xv)))
         return eval_acc/len(Xv), eval_loss/len(Xv)
 
     # ---------------------------------------------------------------------------------------------------------- #
     # Description:                                                                                               #
     #         Run one training epoch using images in X_train and labels in y_train.                              #
     # ---------------------------------------------------------------------------------------------------------- #
-    def training_epoch(self, session, op, lr):
-        batch_list = np.random.permutation(len(self.train[0]))
+    def training_epoch(self, session, lr):
+        batch_list = np.random.permutation(len(self.train))
         p = Parameters()
         start = time.time()
-        train_loss = 0
-        train_acc = 0
-        for j in range(0, len(self.train[0]), p.BATCH_SIZE):
-            if j+p.BATCH_SIZE > len(self.train[0]):
+        train_loss1 = 0
+        train_loss2 = 0
+
+        for j in range(0, len(self.train), p.BATCH_SIZE):
+            if j+p.BATCH_SIZE > len(self.train):
                 break
-            X_batch = self.train[0].take(batch_list[j:j+p.BATCH_SIZE], axis=0)
-            y_batch = self.train[1].take(batch_list[j:j+p.BATCH_SIZE], axis=0)
+            X_batch = self.train.take(batch_list[j:j+p.BATCH_SIZE], axis=0)
 
-            ret = session.run([op, self.loss, self.correct], feed_dict = {self.X: X_batch, self.y: y_batch, self.learning_rate: lr, self.is_training: True})
-            train_loss += ret[1]*p.BATCH_SIZE
-            train_acc += ret[2]
+            ret1 = session.run([self.encoder_train_op, self.loss, self.correct], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
+            ret2 = session.run([self.decoder_train_op, self.loss, self.correct], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
+            
+            train_loss1 += ret1[1]*p.BATCH_SIZE
+            train_loss2 += ret2[1]*p.BATCH_SIZE
 
-        pass_size = (len(self.train[0])-len(self.train[0])%p.BATCH_SIZE)
-        print('LR:'+str(lr)+' Time:'+str(time.time()-start)+' ACC:'+str(train_acc/pass_size)+' Loss:'+str(train_loss/pass_size))
+        pass_size = (len(self.train) - len(self.train) % p.BATCH_SIZE)
+        print('LR:'+str(lr)+' Time:'+str(time.time()-start)+ ' Loss1:'+str(train_loss1/pass_size)' Loss2:'+str(train_loss2/pass_size))
+
+
+
+
+
 
 # ---------------------------------------------------------------------------------------------------------- #
 # Author: maups                                                                                              #
