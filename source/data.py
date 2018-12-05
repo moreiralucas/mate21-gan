@@ -27,7 +27,7 @@ class Dataset:
     #         y - ndarray with indexes of labels (y[i] is the label for X[i])                                    #
     #         l - list of existing labels (1st label in the list has index 0, 1nd has index 1, and so on)        #
     # ---------------------------------------------------------------------------------------------------------- #
-    def load_multiclass_dataset(self, path, height=224, width=224, num_channels=3):
+    def load_multiclass_dataset(self, path, height=64, width=64, num_channels=1):
         classes = sorted(os.listdir(path))
         images = [sorted(os.listdir(path+'/'+id)) for id in classes]
         num_images = np.sum([len(l) for l in images])
@@ -43,7 +43,7 @@ class Dataset:
                 img = cv2.imread(path+'/'+classes[i]+'/'+images[i][j], cv2.IMREAD_GRAYSCALE).reshape(height, width, num_channels)
                 assert img.shape == (height, width, num_channels), "%r has an invalid image size!" % images[i][j]
                 assert img.dtype == np.uint8, "%r has an invalid pixel format!" % images[i][j]
-                X[k] = img
+                X[k] = cv2.resize(img, (height, width)).reshape(height, width, num_channels)
                 y[k] = i
                 k += 1
         return [X, y], classes
@@ -58,12 +58,12 @@ class Dataset:
                 img = cv2.imread(path+'/'+images[j], cv2.IMREAD_GRAYSCALE).reshape(height, width, num_channels)
                 assert img.shape == (height, width, num_channels), "%r has an invalid image size!" % images[j]
                 assert img.dtype == np.uint8, "%r has an invalid pixel format!" % images[j]
-                X[k] = img
+                X[k] = cv2.resize(img, (height, width)).reshape(height, width, num_channels)
                 y[k] = str(images[j])
                 k += 1
         return [X, y]
     
-    def load_all_images(self, path_train, path_test, height=224, width=224, num_channels=3):
+    def load_all_images(self, path_train, path_test, height=64, width=64, num_channels=1):
         data_train, _ = self.load_multiclass_dataset(path_train, height, width, num_channels)
         data_test = self.load_images(path_test, height, width, num_channels)
         return data_train[0] + data_test[0]
