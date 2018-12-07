@@ -40,33 +40,52 @@ class Dataset:
         k = 0
         for i in range(len(classes)):
             for j in range(len(images[i])):
-                img = cv2.imread(path+'/'+classes[i]+'/'+images[i][j], cv2.IMREAD_GRAYSCALE).reshape(height, width, num_channels)
+                img = cv2.imread(path+'/'+classes[i]+'/'+images[i][j], cv2.IMREAD_GRAYSCALE)
+                img = cv2.resize(img, (height, width)).reshape(height, width, num_channels)
                 assert img.shape == (height, width, num_channels), "%r has an invalid image size!" % images[i][j]
                 assert img.dtype == np.uint8, "%r has an invalid pixel format!" % images[i][j]
-                X[k] = cv2.resize(img, (height, width)).reshape(height, width, num_channels)
+                X[k] = img
                 y[k] = i
                 k += 1
         return [X, y], classes
 
-    def load_images(self, path, height=224, width=224, num_channels=3):
+    def load_images(self, path, height=64, width=64, num_channels=1):
         images = sorted(os.listdir(path))
         num_images = len(images)
         X = np.empty([num_images, height, width, num_channels], dtype=np.uint8)
         y = np.empty([num_images], dtype=np.object)
         k = 0
         for j in range(len(images)):
-                img = cv2.imread(path+'/'+images[j], cv2.IMREAD_GRAYSCALE).reshape(height, width, num_channels)
+                img = cv2.imread(path+'/'+images[j], cv2.IMREAD_GRAYSCALE)
+                img = cv2.resize(img, (height, width)).reshape(height, width, num_channels)
                 assert img.shape == (height, width, num_channels), "%r has an invalid image size!" % images[j]
                 assert img.dtype == np.uint8, "%r has an invalid pixel format!" % images[j]
-                X[k] = cv2.resize(img, (height, width)).reshape(height, width, num_channels)
+                X[k] = img
                 y[k] = str(images[j])
                 k += 1
         return [X, y]
-    
+
+    def load_N_images(self, path, height=64, width=64, num_channels=1, seed=42):
+        classes = sorted(os.listdir(path))
+        if seed is not None:
+            np.random.seed(seed)
+
+        X = np.empty([len(classes), height, width, num_channels], dtype=np.uint8)
+        for id in classes:
+            ids = np.array(sorted(os.listdir(path + '/' + id)))
+            np.random.shuffle(ids)
+            new_path = path + '/' + classes[int(id)]+'/'+ ids[0]
+            img = cv2.imread(new_path, cv2.IMREAD_GRAYSCALE)
+            img = cv2.resize(img, (height, width)).reshape(height, width, num_channels)
+            assert img.shape == (height, width, num_channels), "%r has an invalid image size!" % ids[0]
+            assert img.dtype == np.uint8, "%r has an invalid pixel format!" % ids[0]
+            X[int(id)] = img
+        return X
+
     def load_all_images(self, path_train, path_test, height=64, width=64, num_channels=1):
         data_train, _ = self.load_multiclass_dataset(path_train, height, width, num_channels)
         data_test = self.load_images(path_test, height, width, num_channels)
-        return data_train[0] + data_test[0]
+        return np.concatenate((data_train[0], data_test[0]), axis=0)
 
     def shuffle(self, X, y=None, seed=None):
         if y is not None:
