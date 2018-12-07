@@ -34,7 +34,7 @@ class Net():
             self.learning_rate = tf.placeholder(tf.float32)
             self.is_training = tf.placeholder(tf.bool)
             print(self.X.shape)
-            with tf.variable_scope('encoder'):
+            with tf.variable_scope('encoder'): # Discriminator
                 self.out = tf.layers.conv2d(self.X, 4, (3, 3), (1, 1), padding='same', activation=tf.nn.relu)
                 print(self.out.shape)
 
@@ -45,8 +45,8 @@ class Net():
                 print(self.out.shape)
                 self.out = tf.layers.max_pooling2d(self.out, (2, 2), (2, 2), padding='same')
                 print(self.out.shape)
-                
-            with tf.variable_scope('decoder'):
+
+            with tf.variable_scope('decoder'): # Generator
                 self.out = tf.layers.conv2d_transpose(self.out, 4, (3, 3), (2, 2), padding='same', activation=tf.nn.relu)
                 print(self.out.shape)
 
@@ -58,16 +58,7 @@ class Net():
 
             decoder_variables = [v for v in tf.global_variables() if v.name.startswith('decoder')]
             encoder_variables = [v for v in tf.global_variables() if v.name.startswith('encoder')]
-            
-            print("decoder_variables")
-            print(decoder_variables)
-            print("\n\nencoder_variables\n\n")
-            print(encoder_variables)
-            print("------------------")
 
-            print(self.out[0])
-            print(self.X[0])
-            print("------------------")
             self.loss = tf.reduce_mean(tf.reduce_sum((self.out - self.X)**2))
 
             self.encoder_train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss, var_list=encoder_variables)
@@ -105,16 +96,16 @@ class Net():
                 rec = session.run(self.out, feed_dict={self.X: test, self.is_training: False})
                 # cv2.imshow('output', rec[0].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
                 self.visualiza(rec, test)
-            
 
-            print ("Best_acc : " + str(best_acc) + ", loss: " + str(menor_loss) + ", epoca: " + str(epoca)) 
+
+            print ("Best_acc : " + str(best_acc) + ", loss: " + str(menor_loss) + ", epoca: " + str(epoca))
 
     def visualiza(self, rec, test):
         p = Parameters()
         d = Dataset()
         print("test.shape: ", end=' ')
         print(test.shape)
-        
+
         cv2.imshow('in_0', test[0].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
         cv2.imshow('in_1', test[1].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
         cv2.imshow('in_2', test[2].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
@@ -132,7 +123,7 @@ class Net():
         cv2.waitKey(1000)
         # ret1 = session.run([self.encoder_train_op, self.loss], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
         # ret2 = session.run([self.decoder_train_op, self.loss], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
-    
+
     # ---------------------------------------------------------------------------------------------------------- #
     # Description:                                                                                               #
     #         Evaluate images in Xv with labels in yv.                                                           #
@@ -170,11 +161,11 @@ class Net():
 
             ret1 = session.run([self.encoder_train_op, self.loss], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
             ret2 = session.run([self.decoder_train_op, self.loss], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
-            
+
             train_loss1 += ret1[1]*p.BATCH_SIZE
             train_loss2 += ret2[1]*p.BATCH_SIZE
             print(k, end=' ')
         print("")
-        
+
         pass_size = (len(self.train) - len(self.train) % p.BATCH_SIZE)
         print('LR:'+str(lr)+' Time:'+str(time.time()-start)+ ' Loss1:'+str(train_loss1/pass_size)+' Loss2:'+str(train_loss2/pass_size))
