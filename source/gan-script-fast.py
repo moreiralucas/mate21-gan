@@ -2,23 +2,15 @@ import tensorflow as tf
 import datetime
 from data import Dataset
 
-# Load MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
-#mnist = input_data.read_data_sets("MNIST_data/")
-#print("mnist:")
-#print(mnist)
 
 class Gan():
     # Define the discriminator network
     def __init__(self):
-        # self._index_in_epoch = 0
-        # self._epochs_completed = 0
-        # self._num_examples = 0 # alterar para o tamanho do dataset
         img_shape = [None,28,28,1]
         #img_shape = [None,64,64,1]
         self.x_placeholder = tf.placeholder(tf.float32, shape=img_shape, name='x_placeholder')
         # x_placeholder is for feeding input images to the discriminator
-        pass
 
     def discriminator(self, images, reuse_variables=None):
         with tf.variable_scope(tf.get_variable_scope(), reuse=reuse_variables) as scope:
@@ -152,7 +144,7 @@ class Gan():
             #print(real_image_batch.shape)
             _, __ = sess.run([d_trainer_real, d_trainer_fake],
                                                 {self.x_placeholder: real_image_batch})
-
+            
         # Train generator and discriminator together
         print("Train generator and discriminator together")
         for i in range(100000):
@@ -170,10 +162,10 @@ class Gan():
                 summary = sess.run(merged, {self.x_placeholder: real_image_batch})
                 writer.add_summary(summary, i)
 
-            # Optionally, uncomment the following lines to update the checkpoint files attached to the tutorial.
-            saver = tf.train.Saver()
-            path_model = 'pretrained-model/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
-            saver.save(sess, path_model)
+        saver = tf.train.Saver()
+        path_model = 'pretrained-model/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
+        saver.save(sess, path_model)
+        print("The model has saved in: " + path_model)
         
 if __name__ == "__main__":
     d = Dataset()
