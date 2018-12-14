@@ -147,21 +147,15 @@ class Gan():
         # Pre-train discriminator
         for i in range(300):
             real_image_batch = dataset.next_batch(50)
-            #real_image_batch = mnist.train.next_batch(batch_size)[0].reshape([batch_size, 28, 28, 1])
-            print("real_image_batch: ")
-            print(real_image_batch.shape)
-            if i == 5:
-                break
+            #print("real_image_batch: ")
+            #print(real_image_batch.shape)
             _, __ = sess.run([d_trainer_real, d_trainer_fake],
                                                 {self.x_placeholder: real_image_batch})
 
         # Train generator and discriminator together
         for i in range(100000):
             real_image_batch = dataset.next_batch(50)
-            print(real_image_batch.shape)
-            if i == 5:
-                break
-            #real_image_batch = mnist.train.next_batch(batch_size)[0].reshape([batch_size, 28, 28, 1])
+            #print(real_image_batch.shape)
 
             # Train discriminator on both real and fake images
             _, __ = sess.run([d_trainer_real, d_trainer_fake], {self.x_placeholder: real_image_batch})
@@ -176,7 +170,8 @@ class Gan():
 
             # Optionally, uncomment the following lines to update the checkpoint files attached to the tutorial.
             saver = tf.train.Saver()
-            saver.save(sess, 'pretrained-model/pretrained_gan.ckpt')
+            path_model = 'pretrained-model/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
+            saver.save(sess, path_model)
         
 if __name__ == "__main__":
     d = Dataset()
