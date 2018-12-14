@@ -1,17 +1,21 @@
 import tensorflow as tf
 import datetime
+from data import Dataset
 
 # Load MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
-mnist = input_data.read_data_sets("MNIST_data/")
-print("mnist:")
-print(mnist)
+#mnist = input_data.read_data_sets("MNIST_data/")
+#print("mnist:")
+#print(mnist)
 
 class Gan():
     # Define the discriminator network
     def __init__(self):
-        # img_shape = [None,64,64,1]
+        # self._index_in_epoch = 0
+        # self._epochs_completed = 0
+        # self._num_examples = 0 # alterar para o tamanho do dataset
         img_shape = [None,28,28,1]
+        #img_shape = [None,64,64,1]
         self.x_placeholder = tf.placeholder(tf.float32, shape=img_shape, name='x_placeholder')
         # x_placeholder is for feeding input images to the discriminator
         pass
@@ -26,6 +30,7 @@ class Gan():
             d1 = d1 + d_b1
             d1 = tf.nn.relu(d1)
             d1 = tf.nn.avg_pool(d1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+            print("d1: {}".format(d1.shape))
 
             d_w2 = tf.get_variable('d_w2', [5, 5, 32, 64], initializer=tf.truncated_normal_initializer(stddev=0.02))
             d_b2 = tf.get_variable('d_b2', [64], initializer=tf.constant_initializer(0))
@@ -33,6 +38,7 @@ class Gan():
             d2 = d2 + d_b2
             d2 = tf.nn.relu(d2)
             d2 = tf.nn.avg_pool(d2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+            print("d2: {}".format(d2.shape))
 
             d_w3 = tf.get_variable('d_w3', [7 * 7 * 64, 1024], initializer=tf.truncated_normal_initializer(stddev=0.02))
             d_b3 = tf.get_variable('d_b3', [1024], initializer=tf.constant_initializer(0))
@@ -40,10 +46,12 @@ class Gan():
             d3 = tf.matmul(d3, d_w3)
             d3 = d3 + d_b3
             d3 = tf.nn.relu(d3)
+            print("d3: {}".format(d3.shape))
 
             d_w4 = tf.get_variable('d_w4', [1024, 1], initializer=tf.truncated_normal_initializer(stddev=0.02))
             d_b4 = tf.get_variable('d_b4', [1], initializer=tf.constant_initializer(0))
             self.d4 = tf.matmul(d3, d_w4) + d_b4
+            print("d4: {}".format(self.d4.shape))
             return self.d4
 
     def generator(self, batch_size, z_dim):
@@ -54,6 +62,7 @@ class Gan():
         g1 = tf.reshape(g1, [-1, 56, 56, 1])
         g1 = tf.contrib.layers.batch_norm(g1, epsilon=1e-5, scope='g_b1')
         g1 = tf.nn.relu(g1)
+        print("g1: {}".format(g1.shape))
 
         g_w2 = tf.get_variable('g_w2', [3, 3, 1, z_dim/2], dtype=tf.float32, initializer=tf.truncated_normal_initializer(stddev=0.02))
         g_b2 = tf.get_variable('g_b2', [z_dim/2], initializer=tf.truncated_normal_initializer(stddev=0.02))
@@ -62,6 +71,7 @@ class Gan():
         g2 = tf.contrib.layers.batch_norm(g2, epsilon=1e-5, scope='g_b2')
         g2 = tf.nn.relu(g2)
         g2 = tf.image.resize_images(g2, [56, 56])
+        print("g2: {}".format(g2.shape))
 
         g_w3 = tf.get_variable('g_w3', [3, 3, z_dim/2, z_dim/4], dtype=tf.float32, initializer=tf.truncated_normal_initializer(stddev=0.02))
         g_b3 = tf.get_variable('g_b3', [z_dim/4], initializer=tf.truncated_normal_initializer(stddev=0.02))
@@ -70,16 +80,19 @@ class Gan():
         g3 = tf.contrib.layers.batch_norm(g3, epsilon=1e-5, scope='g_b3')
         g3 = tf.nn.relu(g3)
         g3 = tf.image.resize_images(g3, [56, 56])
+        print("g3: {}".format(g3.shape))
 
         g_w4 = tf.get_variable('g_w4', [1, 1, z_dim/4, 1], dtype=tf.float32, initializer=tf.truncated_normal_initializer(stddev=0.02))
         g_b4 = tf.get_variable('g_b4', [1], initializer=tf.truncated_normal_initializer(stddev=0.02))
         self.g4 = tf.nn.conv2d(g3, g_w4, strides=[1, 2, 2, 1], padding='SAME')
         self.g4 = self.g4 + g_b4
         self.g4 = tf.sigmoid(self.g4)
+        print("g4: {}".format(self.g4.shape))
+
         return self.g4
         # Dimensions of g4: batch_size x 28 x 28 x 1
 
-    def train(self):
+    def train(self, dataset):
         z_dimensions = 100
         batch_size = 50
 
@@ -133,15 +146,22 @@ class Gan():
 
         # Pre-train discriminator
         for i in range(300):
-            real_image_batch = mnist.train.next_batch(batch_size)[0].reshape([batch_size, 28, 28, 1])
+            real_image_batch = dataset.next_batch(50)
+            #real_image_batch = mnist.train.next_batch(batch_size)[0].reshape([batch_size, 28, 28, 1])
             print("real_image_batch: ")
-            print(real_image_batch)
+            print(real_image_batch.shape)
+            if i == 5:
+                break
             _, __ = sess.run([d_trainer_real, d_trainer_fake],
                                                 {self.x_placeholder: real_image_batch})
 
         # Train generator and discriminator together
         for i in range(100000):
-            real_image_batch = mnist.train.next_batch(batch_size)[0].reshape([batch_size, 28, 28, 1])
+            real_image_batch = dataset.next_batch(50)
+            print(real_image_batch.shape)
+            if i == 5:
+                break
+            #real_image_batch = mnist.train.next_batch(batch_size)[0].reshape([batch_size, 28, 28, 1])
 
             # Train discriminator on both real and fake images
             _, __ = sess.run([d_trainer_real, d_trainer_fake], {self.x_placeholder: real_image_batch})
@@ -157,7 +177,12 @@ class Gan():
             # Optionally, uncomment the following lines to update the checkpoint files attached to the tutorial.
             saver = tf.train.Saver()
             saver.save(sess, 'pretrained-model/pretrained_gan.ckpt')
-
+        
 if __name__ == "__main__":
+    d = Dataset()
+    _ = d.load_all_images('../data_part1/train', '../data_part1/test', height=28, width=28)
+
+    print("Imagens carregadas!")
     net = Gan()
-    net.train()
+    print("Rede inicializada!")
+    net.train(d)

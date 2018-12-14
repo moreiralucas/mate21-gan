@@ -10,7 +10,10 @@ class Dataset:
     def __init__(self):
         self.scalares = np.ones(1)
         self.angulos = np.zeros(1)
-
+        self._index_in_epoch = 0
+        self._epochs_completed = 0
+        self._images = None
+        self._num_examples = 0 # alterar para o tamanho do dataset
     # ---------------------------------------------------------------------------------------------------------- #
     # Description:                                                                                               #
     #         Load all images from a multiclass dataset (folder of folders). Each folder inside the main folder  #
@@ -85,7 +88,10 @@ class Dataset:
     def load_all_images(self, path_train, path_test, height=64, width=64, num_channels=1):
         data_train, _ = self.load_multiclass_dataset(path_train, height, width, num_channels)
         data_test = self.load_images(path_test, height, width, num_channels)
-        return np.concatenate((data_train[0], data_test[0]), axis=0)
+        self._images = np.concatenate((data_train[0], data_test[0]), axis=0)
+        self._num_examples = len(self._images)
+        self._images = self.shuffle(self._images)
+        return self._images
 
     def shuffle(self, X, y=None, seed=None):
         if y is not None:
@@ -142,3 +148,77 @@ class Dataset:
         print("len(y_train): {}".format(len(y_train)))
         x_out, y_out = self.shuffle(X_train, y_train, seed=42)
         return [x_out, y_out]
+
+    def next_batch(self, batch_size=50, fake_data=False):
+        """Return the next `batch_size` examples from this data set."""
+        # print("self._num_examples: {}".format(self._num_examples))
+        # print("batch_size: {}".format(batch_size))
+        assert batch_size < self._num_examples
+        start = self._index_in_epoch
+        self._index_in_epoch += batch_size
+
+        if self._index_in_epoch < self._num_examples:
+            self._epochs_completed += 1
+            end = self._index_in_epoch
+            return self._images[start:end]
+        else:
+            self._index_in_epoch = 0
+            return self._images[start:]
+
+"""
+    def next_batch_image(self, batch_size, shuffle=None, incomplete=None):
+    # determine shuffle and incomplete behaviors
+        if shuffle is None:
+            shuffle = self._shuffle_behavior
+
+        if incomplete is None:
+            incomplete = self._incomplete_batches
+
+        start = self._index_in_epoch
+    
+        # TODO: Em self._perm, ao invés de gerar uma lista de indices
+        #       será gerado um lista de tuplas, com os indices da image
+        #       linha, coluna e um valor correspondente ao augmentation
+
+        # shuffle for first epoch
+        if self._epochs_completed == 0 and start == 0:
+      
+        self._perm = np.arange(self._num_examples)
+        if shuffle:
+            np.random.shuffle(self._perm)
+    
+        # go to next epoch
+        if start + batch_size >= self.num_samples:
+            # finished epoch
+            self._epochs_completed += 1
+
+            # get the rest of samples in this epoch
+            rest_num_samples = self.num_samples - start
+            images_rest_part, labels_rest_part = self._to_patches(self._perm[start:])
+
+            if shuffle:
+                self._perm = self.get_new_list()
+                np.random.shuffle(self._perm)
+
+            # return incomplete batch
+            if incomplete:
+                self._index_in_epoch = 0
+                return images_rest_part, labels_rest_part
+
+          # start next epoch
+            start = 0
+            self._index_in_epoch = batch_size - rest_num_samples
+            end = self._index_in_epoch
+
+          # retrive samples in the new epoch
+            images_new_part, labels_new_part = self._to_patches(
+                self._perm[start:end])
+
+            return np.concatenate(
+                  (images_rest_part, images_new_part), axis=0), np.concatenate(
+                  (labels_rest_part, labels_new_part), axis=0)
+        else:
+            self._index_in_epoch += batch_size
+            end = self._index_in_epoch
+            return self._to_patches(self._perm[start:end])
+"""
