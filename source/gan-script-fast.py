@@ -145,6 +145,7 @@ class Gan():
         sess.run(tf.global_variables_initializer())
 
         # Pre-train discriminator
+        print("Pre-train discriminator")
         for i in range(300):
             real_image_batch = dataset.next_batch(50)
             #print("real_image_batch: ")
@@ -153,6 +154,7 @@ class Gan():
                                                 {self.x_placeholder: real_image_batch})
 
         # Train generator and discriminator together
+        print("Train generator and discriminator together")
         for i in range(100000):
             real_image_batch = dataset.next_batch(50)
             #print(real_image_batch.shape)
