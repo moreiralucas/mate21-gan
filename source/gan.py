@@ -1,171 +1,165 @@
 import tensorflow as tf
-import numpy as np
-import random
 import datetime
-import time
-import sys
-import os
-import cv2
-
 from data import Dataset
-from parameters import Parameters
 
+from tensorflow.examples.tutorials.mnist import input_data
 
-class Net():
-    # ---------------------------------------------------------------------------------------------------------- #
-    # Description:                                                                                               #
-    #         Load the training set, shuffle its images and then split them in training and validation subsets.  #
-    #         After that, load the testing set.                                                                  #
-    # ---------------------------------------------------------------------------------------------------------- #
-    def __init__(self, input_train, p):
-        self.train = input_train
+class Gan():
+    # Define the discriminator network
+    def __init__(self):
+        img_shape = [None,28,28,1]
+        #img_shape = [None,64,64,1]
+        self.x_placeholder = tf.placeholder(tf.float32, shape=img_shape, name='x_placeholder')
+        # x_placeholder is for feeding input images to the discriminator
 
-        # ---------------------------------------------------------------------------------------------------------- #
-        # Description:                                                                                               #
-        #         Create a training graph that receives a batch of images and their respective labels and run a      #
-        #         training iteration or an inference job. Train the last FC layer using fine_tuning_op or the entire #
-        #         network using full_backprop_op. A weight decay of 1e-4 is used for full_backprop_op only.          #
-        # ---------------------------------------------------------------------------------------------------------- #
-        self.graph = tf.Graph()
-        with self.graph.as_default():
-            self.X = tf.placeholder(tf.float32, shape = (None, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, p.NUM_CHANNELS))
-            # self.y = tf.placeholder(tf.int64, shape = (None,))
-            # self.y_one_hot = tf.one_hot(self.y, size_class_train)
-            self.learning_rate = tf.placeholder(tf.float32)
-            self.is_training = tf.placeholder(tf.bool)
-            print(self.X.shape)
-            with tf.variable_scope('encoder'): # Discriminator
-                self.out = tf.layers.conv2d(self.X, 4, (3, 3), (1, 1), padding='same', activation=tf.nn.relu)
-                print(self.out.shape)
+    def discriminator(self, images, reuse_variables=None):
+        with tf.variable_scope(tf.get_variable_scope(), reuse=reuse_variables) as scope:
 
-                self.out = tf.layers.max_pooling2d(self.out, (2, 2), (2, 2), padding='same')
-                print(self.out.shape)
+            # Alterar valor de stddev para 0 (Por default, o construtor do método já inicializa com zero)
+            d_w1 = tf.get_variable('d_w1', [5, 5, 1, 32], initializer=tf.truncated_normal_initializer()) # numpy.random.normal -> verificar essa função, q é equivalente
+            d_b1 = tf.get_variable('d_b1', [32], initializer=tf.constant_initializer(0))
+            d1 = tf.nn.conv2d(input=images, filter=d_w1, strides=[1, 1, 1, 1], padding='SAME')
+            d1 = d1 + d_b1
+            d1 = tf.nn.relu(d1)
+            d1 = tf.nn.avg_pool(d1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+            print("d1: {}".format(d1.shape))
 
-                self.out = tf.layers.conv2d(self.out, 16, (3, 3), (2, 2), padding='same', activation=tf.nn.relu)
-                print(self.out.shape)
-                self.out = tf.layers.max_pooling2d(self.out, (2, 2), (2, 2), padding='same')
-                print(self.out.shape)
+            d_w2 = tf.get_variable('d_w2', [5, 5, 32, 64], initializer=tf.truncated_normal_initializer())
+            d_b2 = tf.get_variable('d_b2', [64], initializer=tf.constant_initializer(0))
+            d2 = tf.nn.conv2d(input=d1, filter=d_w2, strides=[1, 1, 1, 1], padding='SAME')
+            d2 = d2 + d_b2
+            d2 = tf.nn.relu(d2)
+            d2 = tf.nn.avg_pool(d2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+            print("d2: {}".format(d2.shape))
 
-            with tf.variable_scope('decoder'): # Generator
-                self.out = tf.layers.conv2d_transpose(self.out, 4, (3, 3), (2, 2), padding='same', activation=tf.nn.relu)
-                print(self.out.shape)
+            d_w3 = tf.get_variable('d_w3', [7 * 7 * 64, 1024], initializer=tf.truncated_normal_initializer())
+            d_b3 = tf.get_variable('d_b3', [1024], initializer=tf.constant_initializer(0))
+            d3 = tf.reshape(d2, [-1, 7 * 7 * 64])
+            d3 = tf.matmul(d3, d_w3)
+            d3 = d3 + d_b3
+            d3 = tf.nn.relu(d3)
+            print("d3: {}".format(d3.shape))
 
-                self.out = tf.layers.conv2d_transpose(self.out, 1, (3, 3), (2, 2), padding='same', activation=tf.nn.relu)
-                print(self.out.shape)
+            d_w4 = tf.get_variable('d_w4', [1024, 1], initializer=tf.truncated_normal_initializer())
+            d_b4 = tf.get_variable('d_b4', [1], initializer=tf.constant_initializer(0))
+            self.d4 = tf.matmul(d3, d_w4) + d_b4
+            print("d4: {}".format(self.d4.shape))
+            return self.d4
 
-                self.out = tf.layers.conv2d_transpose(self.out, 1, (3, 3), (2, 2), padding='same', activation=tf.nn.relu)
-                print(self.out.shape)
+    def generator(self, batch_size, z_dim):
+        z = tf.random_normal([batch_size, z_dim], mean=0, stddev=1, name='z') # passar por parâmetro ao invés de gerar aqui
+        g_w1 = tf.get_variable('g_w1', [z_dim, 3136], dtype=tf.float32, initializer=tf.truncated_normal_initializer())
+        g_b1 = tf.get_variable('g_b1', [3136], initializer=tf.truncated_normal_initializer())
+        g1 = tf.matmul(z, g_w1) + g_b1
+        g1 = tf.reshape(g1, [-1, 56, 56, 1])
+        g1 = tf.contrib.layers.batch_norm(g1, epsilon=1e-5, scope='g_b1')
+        g1 = tf.nn.relu(g1)
+        print("g1: {}".format(g1.shape))
 
-            decoder_variables = [v for v in tf.global_variables() if v.name.startswith('decoder')]
-            encoder_variables = [v for v in tf.global_variables() if v.name.startswith('encoder')]
+        g_w2 = tf.get_variable('g_w2', [3, 3, 1, z_dim/2], dtype=tf.float32, initializer=tf.truncated_normal_initializer())
+        g_b2 = tf.get_variable('g_b2', [z_dim/2], initializer=tf.truncated_normal_initializer())
+        g2 = tf.nn.conv2d(g1, g_w2, strides=[1, 2, 2, 1], padding='SAME')
+        g2 = g2 + g_b2
+        g2 = tf.contrib.layers.batch_norm(g2, epsilon=1e-5, scope='g_b2')
+        g2 = tf.nn.relu(g2)
+        g2 = tf.image.resize_images(g2, [56, 56])
+        print("g2: {}".format(g2.shape))
 
-            self.loss = tf.reduce_mean(tf.reduce_sum((self.out - self.X)**2))
+        g_w3 = tf.get_variable('g_w3', [3, 3, z_dim/2, z_dim/4], dtype=tf.float32, initializer=tf.truncated_normal_initializer())
+        g_b3 = tf.get_variable('g_b3', [z_dim/4], initializer=tf.truncated_normal_initializer())
+        g3 = tf.nn.conv2d(g2, g_w3, strides=[1, 2, 2, 1], padding='SAME')
+        g3 = g3 + g_b3
+        g3 = tf.contrib.layers.batch_norm(g3, epsilon=1e-5, scope='g_b3')
+        g3 = tf.nn.relu(g3)
+        g3 = tf.image.resize_images(g3, [56, 56])
+        print("g3: {}".format(g3.shape))
 
-            self.encoder_train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss, var_list=encoder_variables)
-            self.decoder_train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss, var_list=decoder_variables)
+        g_w4 = tf.get_variable('g_w4', [1, 1, z_dim/4, 1], dtype=tf.float32, initializer=tf.truncated_normal_initializer())
+        g_b4 = tf.get_variable('g_b4', [1], initializer=tf.truncated_normal_initializer())
+        self.g4 = tf.nn.conv2d(g3, g_w4, strides=[1, 2, 2, 1], padding='SAME')
+        self.g4 = self.g4 + g_b4
+        self.g4 = tf.sigmoid(self.g4)
+        print("g4: {}".format(self.g4.shape))
 
-            # self.result = tf.argmax(self.out, 1)
-            # self.correct = tf.reduce_sum(tf.cast(tf.equal(self.result, self.y), tf.float32))
+        return self.g4
+        # Dimensions of g4: batch_size x 28 x 28 x 1
 
-    # ---------------------------------------------------------------------------------------------------------- #
-    # Description:                                                                                               #
-    #         Training loop.                                                                                     #
-    # ---------------------------------------------------------------------------------------------------------- #
+    def train(self, dataset):
+        z_dimensions = 100
+        batch_size = 50
 
-    def treino(self):
-        p = Parameters()
-        d = Dataset()
-        with tf.Session(graph = self.graph) as session:
-            # weight initialization
-            session.run(tf.global_variables_initializer())
+        Gz = self.generator(batch_size, z_dimensions)
+        Dx = self.discriminator(self.x_placeholder)
+        Dg = self.discriminator(Gz, reuse_variables=True)
 
-            menor_loss = 1e9
-            best_acc = 0
-            epoca = 0
-            saver = tf.train.Saver()
+        d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits = Dx, labels = tf.ones_like(Dx)))
+        d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits = Dg, labels = tf.zeros_like(Dg)))
+        g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits = Dg, labels = tf.ones_like(Dg)))
 
-            # full optimization
-            for epoch in range(p.NUM_EPOCHS_FULL):
-                print('\nEpoch: '+ str(epoch+1), end=' ')
-                lr = (p.S_LEARNING_RATE_FULL*(p.NUM_EPOCHS_FULL-epoch-1)+p.F_LEARNING_RATE_FULL*epoch)/(p.NUM_EPOCHS_FULL-1)
-                self.training_epoch(session, lr)
-                # val_acc, val_loss = self.evaluation(session, self.val[0], self.val[1], name='Validation')
-                test = d.load_N_images(p.TRAIN_FOLDER, seed=None)
-                # print ('The model has successful saved')
-                # cv2.imshow('input', test[5].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-                rec = session.run(self.out, feed_dict={self.X: test, self.is_training: False})
-                # cv2.imshow('output', rec[0].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-                self.visualiza(rec, test)
+        tvars = tf.trainable_variables()
+        d_vars = [var for var in tvars if 'd_' in var.name]
+        g_vars = [var for var in tvars if 'g_' in var.name]
 
+        d_trainer_fake = tf.train.AdamOptimizer(0.0003).minimize(d_loss_fake, var_list=d_vars)
+        d_trainer_real = tf.train.AdamOptimizer(0.0003).minimize(d_loss_real, var_list=d_vars)
 
-            print ("Best_acc : " + str(best_acc) + ", loss: " + str(menor_loss) + ", epoca: " + str(epoca))
+        g_trainer = tf.train.AdamOptimizer(0.0001).minimize(g_loss, var_list=g_vars)
 
-    def visualiza(self, rec, test):
-        p = Parameters()
-        d = Dataset()
-        print("test.shape: ", end=' ')
-        print(test.shape)
+        tf.get_variable_scope().reuse_variables()
 
-        cv2.imshow('in_0', test[0].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('in_1', test[1].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('in_2', test[2].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('in_3', test[3].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('in_4', test[4].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('in_5', test[5].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
+        sess = tf.Session() # Verificar pq não passa um grafo como parâmetro
 
-        cv2.imshow('out_0', rec[0].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('out_1', rec[1].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('out_2', rec[2].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('out_3', rec[3].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('out_4', rec[4].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('out_5', rec[5].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        print(rec.shape)
-        cv2.waitKey(1000)
-        # ret1 = session.run([self.encoder_train_op, self.loss], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
-        # ret2 = session.run([self.decoder_train_op, self.loss], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
+        # Begin tensorboard area
+        # Send summary statistics to TensorBoard
+        tf.summary.scalar('Generator_loss', g_loss)
+        tf.summary.scalar('Discriminator_loss_real', d_loss_real)
+        tf.summary.scalar('Discriminator_loss_fake', d_loss_fake)
 
-    # ---------------------------------------------------------------------------------------------------------- #
-    # Description:                                                                                               #
-    #         Evaluate images in Xv with labels in yv.                                                           #
-    # ---------------------------------------------------------------------------------------------------------- #
-    def evaluation(self, session, Xv, yv, name='Evaluation'):
-        p = Parameters()
-        start = time.time()
-        eval_loss = 0
-        eval_acc = 0
-        for j in range(0, len(Xv), p.BATCH_SIZE):
-            ret = session.run([self.loss, self.correct], feed_dict = {self.X: Xv[j:j+p.BATCH_SIZE], self.y: yv[j:j+p.BATCH_SIZE], self.is_training: False})
-            eval_loss += ret[0]*min(p.BATCH_SIZE, len(Xv)-j)
-            eval_acc += ret[1]
+        images_for_tensorboard = self.generator(batch_size, z_dimensions)
+        tf.summary.image('Generated_images', images_for_tensorboard, 5)
+        merged = tf.summary.merge_all()
+        logdir = "tensorboard/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
+        writer = tf.summary.FileWriter(logdir, sess.graph)
+        # End tensorboard area
 
-        print(name+' Time:'+str(time.time()-start)+' ACC:'+str(eval_acc/len(Xv))+' Loss:'+str(eval_loss/len(Xv)))
-        return eval_acc/len(Xv), eval_loss/len(Xv)
+        sess.run(tf.global_variables_initializer())
 
-    # ---------------------------------------------------------------------------------------------------------- #
-    # Description:                                                                                               #
-    #         Run one training epoch using images in X_train and labels in y_train.                              #
-    # ---------------------------------------------------------------------------------------------------------- #
-    def training_epoch(self, session, lr):
-        batch_list = np.random.permutation(len(self.train))
-        p = Parameters()
-        start = time.time()
-        train_loss1 = 0
-        train_loss2 = 0
-        k = 0
-        print("batch:", end= ' ')
-        for j in range(0, len(self.train), p.BATCH_SIZE):
-            k += 1
-            if j+p.BATCH_SIZE > len(self.train):
-                break
-            X_batch = self.train.take(batch_list[j:j+p.BATCH_SIZE], axis=0)
+        # Pre-train discriminator
+        print("Pre-train discriminator")
+        for i in range(300):
+            real_image_batch = dataset.next_batch(50)
+            #print("real_image_batch: ")
+            #print(real_image_batch.shape)
+            _, __ = sess.run([d_trainer_real, d_trainer_fake],
+                                                {self.x_placeholder: real_image_batch})
+            
+        # Train generator and discriminator together
+        print("Train generator and discriminator together")
+        for i in range(100000):
+            real_image_batch = dataset.next_batch(50)
+            #print(real_image_batch.shape)
 
-            ret1 = session.run([self.encoder_train_op, self.loss], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
-            ret2 = session.run([self.decoder_train_op, self.loss], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
+            # Train discriminator on both real and fake images
+            _, __ = sess.run([d_trainer_real, d_trainer_fake], {self.x_placeholder: real_image_batch})
 
-            train_loss1 += ret1[1]*p.BATCH_SIZE
-            train_loss2 += ret2[1]*p.BATCH_SIZE
-            print(k, end=' ')
-        print("")
+            # Train generator
+            _ = sess.run(g_trainer)
 
-        pass_size = (len(self.train) - len(self.train) % p.BATCH_SIZE)
-        print('LR:'+str(lr)+' Time:'+str(time.time()-start)+ ' Loss1:'+str(train_loss1/pass_size)+' Loss2:'+str(train_loss2/pass_size))
+            if i % 10 == 0:
+                # Update TensorBoard with summary statistics
+                summary = sess.run(merged, {self.x_placeholder: real_image_batch})
+                writer.add_summary(summary, i)
+
+        saver = tf.train.Saver()
+        path_model = 'pretrained-model/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
+        saver.save(sess, path_model)
+        print("The model has saved in: " + path_model)
+        
+if __name__ == "__main__":
+    d = Dataset()
+    _ = d.load_all_images('../data_part1/train', '../data_part1/test', height=28, width=28)
+
+    print("Imagens carregadas!")
+    net = Gan()
+    print("Rede inicializada!")
+    net.train(d)
