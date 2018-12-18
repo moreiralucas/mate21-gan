@@ -127,7 +127,8 @@ class Gan():
         # Pre-train discriminator
         print("Pre-train discriminator")
         for i in range(300):
-            real_image_batch = dataset.next_batch(50)
+            # real_image_batch = dataset.next_batch(batch_size)
+            real_image_batch = mnist.train.next_batch(batch_size)[0].reshape([batch_size, 28, 28, 1])
             #print("real_image_batch: ")
             #print(real_image_batch.shape)
             _, __ = sess.run([d_trainer_real, d_trainer_fake],
@@ -136,7 +137,8 @@ class Gan():
         # Train generator and discriminator together
         print("Train generator and discriminator together")
         for i in range(100000):
-            real_image_batch = dataset.next_batch(50)
+            # real_image_batch = dataset.next_batch(batch_size)
+            real_image_batch = mnist.train.next_batch(batch_size)[0].reshape([batch_size, 28, 28, 1])
             #print(real_image_batch.shape)
 
             # Train discriminator on both real and fake images
