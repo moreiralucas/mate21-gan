@@ -1,7 +1,7 @@
 ##Importing libraries 
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import tensorflow as tf
 from data import Dataset
 from tensorflow.examples.tutorials.mnist import input_data
