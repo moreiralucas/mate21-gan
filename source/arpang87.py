@@ -100,7 +100,10 @@ with tf.Session() as sess:
         # print(batch_x.shape)
         
         # Generate noise to feed to the generator
+        # mu, sigma = 0, 0.1 # mean and standard deviation
+        # noise_temp = np.random.normal(mu, sigma, size=[batch_size, noise_dim])
         noise_temp = np.random.uniform(-1., 1., size=[batch_size, noise_dim])
+        # noise_temp = tf.random_normal([batch_size, noise_dim], mean=0, stddev=1, name='z')
         
         # Run optimization op (backprop)
         feed_dict = {disc_inp: batch_x, gen_inp: noise_temp}
@@ -119,7 +122,10 @@ with tf.Session() as sess:
 
     for i in range(n):
       # Noise input.
-      z = np.random.uniform(-1., 1., size=[n, noise_dim])
+      mu, sigma = 0, 0.1 # mean and standard deviation
+      z = np.random.normal(mu, sigma, size=[batch_size, noise_dim])
+      # z = np.random.uniform(-1., 1., size=[n, noise_dim])
+      # z = tf.random_normal([batch_size, noise_dim], mean=0, stddev=1, name='z')
       # Generate image from noise.
       g = sess.run(gen_out, feed_dict={gen_inp: z})
       # Reverse colours for better display
