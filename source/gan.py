@@ -3,7 +3,9 @@ import datetime
 from data import Dataset
 
 from tensorflow.examples.tutorials.mnist import input_data
+mnist = None
 
+# Based on jonbruner
 class Gan():
     # Define the discriminator network
     def __init__(self):
@@ -127,8 +129,8 @@ class Gan():
         # Pre-train discriminator
         print("Pre-train discriminator")
         for i in range(300):
-            # real_image_batch = dataset.next_batch(batch_size)
-            real_image_batch = mnist.train.next_batch(batch_size)[0].reshape([batch_size, 28, 28, 1])
+            real_image_batch = dataset.next_batch(batch_size)
+            # real_image_batch = mnist.train.next_batch(batch_size)[0].reshape([batch_size, 28, 28, 1])
             #print("real_image_batch: ")
             #print(real_image_batch.shape)
             _, __ = sess.run([d_trainer_real, d_trainer_fake],
@@ -137,8 +139,8 @@ class Gan():
         # Train generator and discriminator together
         print("Train generator and discriminator together")
         for i in range(100000):
-            # real_image_batch = dataset.next_batch(batch_size)
-            real_image_batch = mnist.train.next_batch(batch_size)[0].reshape([batch_size, 28, 28, 1])
+            real_image_batch = dataset.next_batch(batch_size)
+            # real_image_batch = mnist.train.next_batch(batch_size)[0].reshape([batch_size, 28, 28, 1])
             #print(real_image_batch.shape)
 
             # Train discriminator on both real and fake images
@@ -160,7 +162,7 @@ class Gan():
 if __name__ == "__main__":
     d = Dataset()
     _ = d.load_all_images('../data_part1/train', '../data_part1/test', height=28, width=28)
-
+    #mnist = input_data.read_data_sets("MNIST_data/")
     print("Imagens carregadas!")
     net = Gan()
     print("Rede inicializada!")
