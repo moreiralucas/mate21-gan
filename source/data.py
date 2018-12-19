@@ -163,4 +163,6 @@ class Dataset:
             return self._images[start:end]
         else:
             self._index_in_epoch = 0
-            return self._images[start:]
+            start = 0
+            end = batch_size
+            return self._images[start:end]
