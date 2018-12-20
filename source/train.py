@@ -11,7 +11,7 @@ import os
 
 from data import Dataset
 from parameters import Parameters
-from gan import Net
+from network import Net
 
 def main():
     # Inicializa e configura parâmetros
@@ -22,9 +22,9 @@ def main():
 
     # Carrega as imagens do treino e do test com suas respectivas labels
     train = d.load_all_images(p.TRAIN_FOLDER, p.TEST_FOLDER)
-    # train = d.load_N_images(p.TRAIN_FOLDER)
+    train = train[:500]
     print("size of train: {}".format(len(train)))
-
+    
     # Embaralhas as imagens
     train = d.shuffle(train, seed=42)
     

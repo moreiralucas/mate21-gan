@@ -10,6 +10,21 @@ import cv2
 from data import Dataset
 from parameters import Parameters
 
+def generator(X):
+    with tf.variable_scope('generator'): # generator
+        out_img = tf.layers.dense(X, 128, activation=tf.nn.relu)
+        out_img = tf.layers.dense(out_img, 256, activation=tf.nn.sigmoid)
+        out_img = tf.reshape(out_img, (-1, 16, 16, 1))
+    return out_img
+
+# self.X = tf.placeholder(tf.float32, shape = (None, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, p.NUM_CHANNELS))
+def discriminator(X, reuse_variables=None):
+    with tf.variable_scope('discriminator', reuse=reuse_variables): # discriminator -> encoder
+        out = tf.layers.dense(X, 256, activation=tf.nn.relu)
+        out = tf.layers.dense(out, 1, activation=None)
+    return out
+
+p = Parameters()
 
 class Net():
     # ---------------------------------------------------------------------------------------------------------- #
@@ -19,58 +34,37 @@ class Net():
     # ---------------------------------------------------------------------------------------------------------- #
     def __init__(self, input_train, p):
         self.train = input_train
-
-        # ---------------------------------------------------------------------------------------------------------- #
-        # Description:                                                                                               #
-        #         Create a training graph that receives a batch of images and their respective labels and run a      #
-        #         training iteration or an inference job. Train the last FC layer using fine_tuning_op or the entire #
-        #         network using full_backprop_op. A weight decay of 1e-4 is used for full_backprop_op only.          #
-        # ---------------------------------------------------------------------------------------------------------- #
         self.graph = tf.Graph()
+
         with self.graph.as_default():
-            self.X = tf.placeholder(tf.float32, shape = (None, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, p.NUM_CHANNELS))
-            # self.y = tf.placeholder(tf.int64, shape = (None,))
-            # self.y_one_hot = tf.one_hot(self.y, size_class_train)
+            self.ph_gen = tf.placeholder(tf.float32, shape = (None, 64))
+            self.ph_dis = tf.placeholder(tf.float32, shape = (None, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, p.NUM_CHANNELS))
+
             self.learning_rate = tf.placeholder(tf.float32)
-            self.is_training = tf.placeholder(tf.bool)
-            print(self.X.shape)
-            with tf.variable_scope('encoder'): # Discriminator
-                self.out = tf.layers.conv2d(self.X, 4, (3, 3), (1, 1), padding='same', activation=tf.nn.relu)
-                print(self.out.shape)
+            # self.is_training = tf.placeholder(tf.bool)
+            
+            # meio batch discriminator(real) + meio batch pro generator
+            self.out_real = discriminator(self.ph_dis)
+            self.out_ruido = generator(self.ph_gen)
+            self.out_fake = discriminator(self.out_ruido, reuse_variables=True)
 
-                self.out = tf.layers.max_pooling2d(self.out, (2, 2), (2, 2), padding='same')
-                print(self.out.shape)
+            discriminator_variables = [v for v in tf.global_variables() if v.name.startswith('discriminator')]
+            generator_variables = [v for v in tf.global_variables() if v.name.startswith('generator')]
 
-                self.out = tf.layers.conv2d(self.out, 16, (3, 3), (2, 2), padding='same', activation=tf.nn.relu)
-                print(self.out.shape)
-                self.out = tf.layers.max_pooling2d(self.out, (2, 2), (2, 2), padding='same')
-                print(self.out.shape)
+            self.loss_dis_r = tf.reduce_mean(tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_real, labels = tf.ones_like(self.out_real))))
+            self.loss_gen = tf.reduce_mean(tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_ruido, labels = tf.ones_like(self.out_ruido))))
+            self.loss_dis_f = tf.reduce_mean(tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_fake, labels = tf.zeros_like(self.out_fake))))
 
-            with tf.variable_scope('decoder'): # Generator
-                self.out = tf.layers.conv2d_transpose(self.out, 4, (3, 3), (2, 2), padding='same', activation=tf.nn.relu)
-                print(self.out.shape)
+            self.loss_dis = self.loss_dis_f + self.loss_dis_r
 
-                self.out = tf.layers.conv2d_transpose(self.out, 1, (3, 3), (2, 2), padding='same', activation=tf.nn.relu)
-                print(self.out.shape)
+            self.discriminator_train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss_dis, var_list=discriminator_variables)
+            self.generator_train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss_gen, var_list=generator_variables)
 
-                self.out = tf.layers.conv2d_transpose(self.out, 1, (3, 3), (2, 2), padding='same', activation=tf.nn.relu)
-                print(self.out.shape)
-
-            decoder_variables = [v for v in tf.global_variables() if v.name.startswith('decoder')]
-            encoder_variables = [v for v in tf.global_variables() if v.name.startswith('encoder')]
-
-            self.loss = tf.reduce_mean(tf.reduce_sum((self.out - self.X)**2))
-
-            self.encoder_train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss, var_list=encoder_variables)
-            self.decoder_train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss, var_list=decoder_variables)
-
-            # self.result = tf.argmax(self.out, 1)
-            # self.correct = tf.reduce_sum(tf.cast(tf.equal(self.result, self.y), tf.float32))
-
-    # ---------------------------------------------------------------------------------------------------------- #
-    # Description:                                                                                               #
-    #         Training loop.                                                                                     #
-    # ---------------------------------------------------------------------------------------------------------- #
+    def _get_noise(self, batch_size):
+        mu, sigma = 0, 1.0 # mean and standard deviation
+        noise_dim = 64
+        z = np.random.normal(mu, sigma, size=[batch_size, noise_dim])
+        return z
 
     def treino(self):
         p = Parameters()
@@ -87,42 +81,26 @@ class Net():
             # full optimization
             for epoch in range(p.NUM_EPOCHS_FULL):
                 print('\nEpoch: '+ str(epoch+1), end=' ')
+                
                 lr = (p.S_LEARNING_RATE_FULL*(p.NUM_EPOCHS_FULL-epoch-1)+p.F_LEARNING_RATE_FULL*epoch)/(p.NUM_EPOCHS_FULL-1)
-                self.training_epoch(session, lr)
-                # val_acc, val_loss = self.evaluation(session, self.val[0], self.val[1], name='Validation')
-                test = d.load_N_images(p.TRAIN_FOLDER, seed=None)
-                # print ('The model has successful saved')
-                # cv2.imshow('input', test[5].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-                rec = session.run(self.out, feed_dict={self.X: test, self.is_training: False})
+                img_vis = self.training_epoch(session, lr)
+
                 # cv2.imshow('output', rec[0].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-                self.visualiza(rec, test)
+                self.visualiza(img_vis, epoch)
 
 
             print ("Best_acc : " + str(best_acc) + ", loss: " + str(menor_loss) + ", epoca: " + str(epoca))
+            cv2.destroyAllWindows()
 
-    def visualiza(self, rec, test):
-        p = Parameters()
-        d = Dataset()
-        print("test.shape: ", end=' ')
-        print(test.shape)
-
-        cv2.imshow('in_0', test[0].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('in_1', test[1].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('in_2', test[2].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('in_3', test[3].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('in_4', test[4].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('in_5', test[5].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-
-        cv2.imshow('out_0', rec[0].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('out_1', rec[1].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('out_2', rec[2].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('out_3', rec[3].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('out_4', rec[4].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        cv2.imshow('out_5', rec[5].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-        print(rec.shape)
-        cv2.waitKey(1000)
-        # ret1 = session.run([self.encoder_train_op, self.loss], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
-        # ret2 = session.run([self.decoder_train_op, self.loss], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
+    def visualiza(self, imgs, ep):
+        N = len(imgs)
+        cont = 0
+        for img in imgs:
+            cv2.imshow(str(ep), img)
+            cv2.waitKey(1000)
+            if cont == 10:
+                break
+            cont += 1
 
     # ---------------------------------------------------------------------------------------------------------- #
     # Description:                                                                                               #
@@ -141,10 +119,6 @@ class Net():
         print(name+' Time:'+str(time.time()-start)+' ACC:'+str(eval_acc/len(Xv))+' Loss:'+str(eval_loss/len(Xv)))
         return eval_acc/len(Xv), eval_loss/len(Xv)
 
-    # ---------------------------------------------------------------------------------------------------------- #
-    # Description:                                                                                               #
-    #         Run one training epoch using images in X_train and labels in y_train.                              #
-    # ---------------------------------------------------------------------------------------------------------- #
     def training_epoch(self, session, lr):
         batch_list = np.random.permutation(len(self.train))
         p = Parameters()
@@ -152,20 +126,28 @@ class Net():
         train_loss1 = 0
         train_loss2 = 0
         k = 0
+        img = None
         print("batch:", end= ' ')
-        for j in range(0, len(self.train), p.BATCH_SIZE):
+        NEW_BATCH = p.BATCH_SIZE//2
+
+        for j in range(0, len(self.train), NEW_BATCH):
             k += 1
-            if j+p.BATCH_SIZE > len(self.train):
+            if j+NEW_BATCH > len(self.train):
                 break
-            X_batch = self.train.take(batch_list[j:j+p.BATCH_SIZE], axis=0)
 
-            ret1 = session.run([self.encoder_train_op, self.loss], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
-            ret2 = session.run([self.decoder_train_op, self.loss], feed_dict = {self.X: X_batch, self.learning_rate: lr, self.is_training: True})
+            x_batch = self.train.take(batch_list[j:j+NEW_BATCH], axis=0)
+            x_noise = self._get_noise(NEW_BATCH)
+            ret1 = session.run([self.discriminator_train_op, self.loss_dis], feed_dict = {self.ph_dis: x_batch, self.ph_gen: x_noise, self.learning_rate: lr})
+            
+            x_noise = self._get_noise(p.BATCH_SIZE)
+            ret2 = session.run([self.generator_train_op, self.loss_gen, self.out_ruido], feed_dict = {self.ph_gen: x_noise, self.learning_rate: lr})
 
+            img = ret2[2]
             train_loss1 += ret1[1]*p.BATCH_SIZE
             train_loss2 += ret2[1]*p.BATCH_SIZE
             print(k, end=' ')
         print("")
 
         pass_size = (len(self.train) - len(self.train) % p.BATCH_SIZE)
-        print('LR:'+str(lr)+' Time:'+str(time.time()-start)+ ' Loss1:'+str(train_loss1/pass_size)+' Loss2:'+str(train_loss2/pass_size))
+        print('LR:'+str(lr)+' Time:'+str(time.time()-start)+ ' Loss_dis:'+str(train_loss1/pass_size)+' Loss_gen:'+str(train_loss2/pass_size))
+        return img
