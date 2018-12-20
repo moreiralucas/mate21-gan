@@ -70,6 +70,18 @@ class Net():
         p = Parameters()
         d = Dataset()
         with tf.Session(graph = self.graph) as session:
+            """
+            # Tensorboard area
+            tf.summary.scalar('Generator_loss', self.loss_gen)
+            tf.summary.scalar('Discriminator_loss_real', self.loss_dis_r)
+            tf.summary.scalar('Discriminator_loss_fake', self.loss_dis_f)
+
+            # imgs_to_tb = generator(self.ph_gen, re=tf.AUTO_REUSE)
+            tf.summary.image('Generated_images', [None, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, p.NUM_CHANNELS], 6)
+            self.merged = tf.summary.merge_all()
+            logdir = p.TENSORBOARD_DIR + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
+            self.writer = tf.summary.FileWriter(logdir, session.graph)
+            """
             # weight initialization
             session.run(tf.global_variables_initializer())
 
@@ -83,57 +95,21 @@ class Net():
                 print('\nEpoch: '+ str(epoch+1), end=' ')
                 
                 lr = (p.S_LEARNING_RATE_FULL*(p.NUM_EPOCHS_FULL-epoch-1)+p.F_LEARNING_RATE_FULL*epoch)/(p.NUM_EPOCHS_FULL-1)
-                img_vis = self.training_epoch(session, lr)
-
-                # cv2.imshow('output', rec[0].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-                if epoch % 100 == 0:
-                    self.visualiza_and_save(img_vis, epoch)
-
+                img_vis = self._training_epoch(session, lr)
+            
             print ("Best_acc : " + str(best_acc) + ", loss: " + str(menor_loss) + ", epoca: " + str(epoca))
-            # cv2.destroyAllWindows()
 
-    def visualiza_and_save(self, imgs, ep):
-        N = len(imgs)
-        cont = 0
-        for img in imgs:
-            path = "output/img" + str(ep) + "_" + str(cont) + ".png"
-            cv2.imwrite(path, img_vis[0])
-            # cv2.imshow(str(ep), img)
-            # cv2.waitKey(1000)
-            if cont == 10:
-                break
-            cont += 1
-
-    # ---------------------------------------------------------------------------------------------------------- #
-    # Description:                                                                                               #
-    #         Evaluate images in Xv with labels in yv.                                                           #
-    # ---------------------------------------------------------------------------------------------------------- #
-    def evaluation(self, session, Xv, yv, name='Evaluation'):
-        p = Parameters()
-        start = time.time()
-        eval_loss = 0
-        eval_acc = 0
-        for j in range(0, len(Xv), p.BATCH_SIZE):
-            ret = session.run([self.loss, self.correct], feed_dict = {self.X: Xv[j:j+p.BATCH_SIZE], self.y: yv[j:j+p.BATCH_SIZE], self.is_training: False})
-            eval_loss += ret[0]*min(p.BATCH_SIZE, len(Xv)-j)
-            eval_acc += ret[1]
-
-        print(name+' Time:'+str(time.time()-start)+' ACC:'+str(eval_acc/len(Xv))+' Loss:'+str(eval_loss/len(Xv)))
-        return eval_acc/len(Xv), eval_loss/len(Xv)
-
-    def training_epoch(self, session, lr):
+    def _training_epoch(self, session, lr):
         batch_list = np.random.permutation(len(self.train))
         p = Parameters()
         start = time.time()
         train_loss1 = 0
         train_loss2 = 0
-        k = 0
         img = None
         print("batch:", end= ' ')
         NEW_BATCH = p.BATCH_SIZE//2
 
         for j in range(0, len(self.train), NEW_BATCH):
-            k += 1
             if j+NEW_BATCH > len(self.train):
                 break
 
@@ -147,9 +123,20 @@ class Net():
             img = ret2[2]
             train_loss1 += ret1[1]*p.BATCH_SIZE
             train_loss2 += ret2[1]*p.BATCH_SIZE
-            print(k, end=' ')
-        print("")
 
         pass_size = (len(self.train) - len(self.train) % p.BATCH_SIZE)
-        print('LR:'+str(lr)+' Time:'+str(time.time()-start)+ ' Loss_dis:'+str(train_loss1/pass_size)+' Loss_gen:'+str(train_loss2/pass_size))
+        print('LR:'+str(lr  )+' Time:'+str(time.time()-start)+ ' Loss_dis:'+str(train_loss1/pass_size)+' Loss_gen:'+str(train_loss2/pass_size))
         return img
+
+    def visualiza_and_save(self, imgs, ep):
+        N = len(imgs)
+        cont = 0
+        for img in imgs:
+            cont += 1
+            if cont % 2 == 0:
+                continue 
+            if cont == 10:
+                break
+            path = "output/img" + str(ep) + "_" + str(cont) + ".png"
+            img = cv2.resize(img, (0,0), fx=2.0, fy=2.0) 
+            cv2.imwrite(path, img)
