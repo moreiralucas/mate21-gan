@@ -21,9 +21,9 @@ class Parameters:
         self.LOG_DIR_MODEL = 'model/'
         self.TENSORBOARD_DIR = 'tensorboard/'
         self.NUM_EPOCHS_FULL = 50000
-        self.S_LEARNING_RATE_FULL = 0.0003
-        self.F_LEARNING_RATE_FULL = 0.0003
-        self.BATCH_SIZE = 128
+        self.S_LEARNING_RATE_FULL = 0.001
+        self.F_LEARNING_RATE_FULL = 0.001
+        self.BATCH_SIZE = 256
         self.TOLERANCE = 10
         # Others parameters
         # here ...

@@ -88,14 +88,18 @@ class Net():
 
             # full optimization
             for epoch in range(p.NUM_EPOCHS_FULL):
-                print('\nEpoch: '+ str(epoch+1), end=' ')
+                print('Epoch: '+ str(epoch+1), end=' ')
                 
                 lr = (p.S_LEARNING_RATE_FULL*(p.NUM_EPOCHS_FULL-epoch-1)+p.F_LEARNING_RATE_FULL*epoch)/(p.NUM_EPOCHS_FULL-1)
                 img_vis = self._training_epoch(session, lr)
-            
+                
+                if epoch % 100 == 0:
+                    print("Salvou as imagens!")
+                    self.visualiza_and_save(img_vis, epoch)
+
             path_model = p.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
             saver.save(session, path_model)
-            print("The model has saved in: " + p.LOG_DIR_MODEL)
+            print("The model has saved in: " + path_model)
 
     def _training_epoch(self, session, lr):
         batch_list = np.random.permutation(len(self.train))
@@ -104,7 +108,6 @@ class Net():
         train_loss1 = 0
         train_loss2 = 0
         img = None
-        print("batch:", end= ' ')
         NEW_BATCH = p.BATCH_SIZE//2
 
         for j in range(0, len(self.train), NEW_BATCH):
@@ -130,11 +133,9 @@ class Net():
         N = len(imgs)
         cont = 0
         for img in imgs:
+            if cont % 64 == 0:
+                img *= 255.0
+                path = "output/img" + str(ep) + "_" + str(cont) + ".png"
+                img = cv2.resize(img, (0,0), fx=2.0, fy=2.0)
+                cv2.imwrite(path, img)
             cont += 1
-            if cont % 2 == 0:
-                continue 
-            if cont == 10:
-                break
-            path = "output/img" + str(ep) + "_" + str(cont) + ".png"
-            img = cv2.resize(img, (0,0), fx=2.0, fy=2.0) 
-            cv2.imwrite(path, img)
