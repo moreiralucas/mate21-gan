@@ -84,10 +84,6 @@ class Net():
             """
             # weight initialization
             session.run(tf.global_variables_initializer())
-
-            menor_loss = 1e9
-            best_acc = 0
-            epoca = 0
             saver = tf.train.Saver()
 
             # full optimization
@@ -97,7 +93,9 @@ class Net():
                 lr = (p.S_LEARNING_RATE_FULL*(p.NUM_EPOCHS_FULL-epoch-1)+p.F_LEARNING_RATE_FULL*epoch)/(p.NUM_EPOCHS_FULL-1)
                 img_vis = self._training_epoch(session, lr)
             
-            print ("Best_acc : " + str(best_acc) + ", loss: " + str(menor_loss) + ", epoca: " + str(epoca))
+            path_model = p.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
+            saver.save(session, path_model)
+            print("The model has saved in: " + p.LOG_DIR_MODEL)
 
     def _training_epoch(self, session, lr):
         batch_list = np.random.permutation(len(self.train))
