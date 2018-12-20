@@ -19,10 +19,10 @@ class Parameters:
         self.SPLIT_RATE = 0.80        # split rate for training and validation sets
         # Training loop
         self.LOG_DIR = 'model/'
-        self.NUM_EPOCHS_FULL = 200
-        self.S_LEARNING_RATE_FULL = 0.001
-        self.F_LEARNING_RATE_FULL = 0.001
-        self.BATCH_SIZE = 64
+        self.NUM_EPOCHS_FULL = 5000
+        self.S_LEARNING_RATE_FULL = 0.0003
+        self.F_LEARNING_RATE_FULL = 0.0003
+        self.BATCH_SIZE = 128
         self.TOLERANCE = 10
         # Others parameters
         # here ...

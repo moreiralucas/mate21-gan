@@ -86,18 +86,20 @@ class Net():
                 img_vis = self.training_epoch(session, lr)
 
                 # cv2.imshow('output', rec[0].reshape(p.IMAGE_HEIGHT, p.IMAGE_WIDTH))
-                self.visualiza(img_vis, epoch)
-
+                if epoch % 100 == 0:
+                    self.visualiza_and_save(img_vis, epoch)
 
             print ("Best_acc : " + str(best_acc) + ", loss: " + str(menor_loss) + ", epoca: " + str(epoca))
-            cv2.destroyAllWindows()
+            # cv2.destroyAllWindows()
 
-    def visualiza(self, imgs, ep):
+    def visualiza_and_save(self, imgs, ep):
         N = len(imgs)
         cont = 0
         for img in imgs:
-            cv2.imshow(str(ep), img)
-            cv2.waitKey(1000)
+            path = "output/img" + str(ep) + "_" + str(cont) + ".png"
+            cv2.imwrite(path, img_vis[0])
+            # cv2.imshow(str(ep), img)
+            # cv2.waitKey(1000)
             if cont == 10:
                 break
             cont += 1
