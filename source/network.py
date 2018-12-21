@@ -288,14 +288,7 @@ class Net():
             # full optimization
             for epoch in range(self.param.NUM_EPOCHS_FULL):
                 print('Epoch: '+ str(epoch+1), end=' ')
-                
-                # lr = (self.param.S_LEARNING_RATE_FULL*(self.param.NUM_EPOCHS_FULL-epoch-1)+self.param.F_LEARNING_RATE_FULL*epoch)/(self.param.NUM_EPOCHS_FULL-1)
-                # lr = self.param.F_LEARNING_RATE_FULL
                 self._training_epoch(session)
-
-                # print("Salvou as imagens!")
-                # self.visualiza_and_save(img_vis, epoch)
-                
 
             path_model = self.param.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
             saver.save(session, path_model)
@@ -307,7 +300,6 @@ class Net():
         start = time.time()
         disc_loss = 0
         gen_loss = 0
-        img = None
         NEW_BATCH = self.param.BATCH_SIZE//2
 
         for j in range(0, len(self.train), NEW_BATCH):
