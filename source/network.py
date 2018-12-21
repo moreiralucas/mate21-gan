@@ -101,8 +101,8 @@ class Net():
                 img_vis = self._training_epoch(session, lr)
                 
                 if epoch % 100 == 0:
-                    print("Salvou as imagens!")
-                    self.visualiza_and_save(img_vis, epoch)
+                    # print("Salvou as imagens!")
+                    # self.visualiza_and_save(img_vis, epoch)
                     scores_summary = session.run(
                         score_summary_op,
                         feed_dict={
