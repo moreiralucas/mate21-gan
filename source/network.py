@@ -12,24 +12,31 @@ from parameters import Parameters
 
 def generator(X, isTraining=False, seed=42):
     with tf.variable_scope('generator'): # generator
-        out_img = tf.layers.dense(X, 128, activation=tf.nn.relu)
-        out_img = tf.layers.dense(out_img, 256, activation=tf.nn.relu)
-        out_img = tf.reshape(out_img, (-1, 16, 16, 1))
-        #out_img = tf.layers.conv2d_transpose(out_img, 1, (4, 4), (2, 2), padding='same', activation=tf.nn.tanh)
+        out_img = tf.layers.dense(X, 8 * 8 * 64, activation=tf.nn.leaky_relu)
+        out_img = tf.reshape(out_img, [-1, 8, 8, 64])
 
-        print("out_img.shape: ")
-        out_img = tf.layers.conv2d_transpose(out_img, 1, (5, 5), (2, 2), use_bias=False, padding="same", kernel_initializer=tf.glorot_uniform_initializer(seed))
-        print(out_img.shape)
-        # out_img = tf.layers.batch_normalization(out_img, training=isTraining)
-        print(out_img.shape)
-        out_img = tf.nn.leaky_relu(out_img)
-    return out_img
+        out_img = tf.conv2d_transpose(out_img, 32, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
+
+        out_img = tf.conv2d_transpose(out_img, 16, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
+        
+        out_img = tf.conv2d_transpose(out_img, 1, (3, 3), (2, 2), padding='same', activation=tf.nn.sigmoid)
+        return out_img
 
 def discriminator(X, reuse_variables=None, is_training=True):
     with tf.variable_scope('discriminator', reuse=reuse_variables): # discriminator -> encoder
-        out = tf.layers.dense(X, 256, activation=tf.nn.relu)
+        out = tf.layers.conv2d(X, 16, (5, 5), (1, 1), padding='same', activation=tf.nn.leaky_relu)
+        out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
+
+        out = tf.layers.conv2d(out, 32, (3, 3), (1, 1), padding='same', activation=tf.nn.leaky_relu)
+        out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
+        
+        out = tf.layers.conv2d(out, 64, (3, 3), (1, 1), padding='same', activation=tf.nn.leaky_relu)
+        out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
+        
+        out = tf.reshape(out,[-1, out.shape[1] * out.shape[2] * out.shape[3]])
+        out = tf.layers.dense(out, 256, activation=tf.nn.leaky_relu)
         out = tf.layers.dense(out, 1, activation=None)
-    return out
+        return out
 
 class Net():
     # ---------------------------------------------------------------------------------------------------------- #
@@ -41,7 +48,7 @@ class Net():
         self.train = input_train
         self.graph = tf.Graph()
         self.param = p
-        self.shape_out = (None, 32, 32, 1)
+        self.shape_out = (None, 64, 64, 1)
 
         with self.graph.as_default():
             self.ph_gen = tf.placeholder(tf.float32, shape = (None, 64))
