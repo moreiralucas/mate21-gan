@@ -98,8 +98,8 @@ class Net():
             for epoch in range(self.param.NUM_EPOCHS_FULL):
                 print('Epoch: '+ str(epoch+1), end=' ')
                 
-                lr = (self.param.S_LEARNING_RATE_FULL*(self.param.NUM_EPOCHS_FULL-epoch-1)+self.param.F_LEARNING_RATE_FULL*epoch)/(self.param.NUM_EPOCHS_FULL-1)
-                # lr = p.F_LEARNING_RATE_FULL
+                # lr = (self.param.S_LEARNING_RATE_FULL*(self.param.NUM_EPOCHS_FULL-epoch-1)+self.param.F_LEARNING_RATE_FULL*epoch)/(self.param.NUM_EPOCHS_FULL-1)
+                lr = self.param.F_LEARNING_RATE_FULL
                 loss1, loss2, img_vis = self._training_epoch(session, lr)
 
                 if epoch % 5 == 0:
@@ -135,10 +135,12 @@ class Net():
 
             x_batch = self.train.take(batch_list[j:j+NEW_BATCH], axis=0)
             x_noise = self._get_noise(NEW_BATCH)
-            ret1 = session.run([self.discriminator_train_op, self.loss_dis], feed_dict = {self.ph_dis: x_batch, self.ph_gen: x_noise, self.learning_rate: lr})
+            feed = {self.ph_dis: x_batch, self.ph_gen: x_noise, self.learning_rate: lr}
+            ret1 = session.run([self.discriminator_train_op, self.loss_dis], feed_dict=feed)
             
             x_noise = self._get_noise(self.param.BATCH_SIZE)
-            ret2 = session.run([self.generator_train_op, self.loss_gen, self.generator_train_op], feed_dict = {self.ph_gen: x_noise, self.learning_rate: lr})
+            feed = {self.ph_gen: x_noise, self.learning_rate: lr}
+            ret2 = session.run([self.generator_train_op, self.loss_gen, self.out_ruido], feed_dict=feed)
 
             img = ret2[2]
             train_loss1 += ret1[1]*self.param.BATCH_SIZE
