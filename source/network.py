@@ -255,7 +255,7 @@ class Net():
             reduce_sum_f = tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_fake, labels = tf.zeros_like(self.out_fake))
 
             self.loss_gen = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_ruido, labels = tf.ones_like(self.out_ruido)))
-            self.loss_dis = tf.reduce_mean(reduce_sum_r + reduce_sum_f)
+            self.loss_dis = tf.reduce_mean(tf.concat([reduce_sum_r, reduce_sum_f], axis=0))
 
             self.discriminator_train_op = tf.train.AdamOptimizer(learning_rate=self.param.LEARNING_RATE_FULL).minimize(self.loss_dis, var_list=discriminator_variables)
             self.generator_train_op = tf.train.AdamOptimizer(learning_rate=self.param.LEARNING_RATE_FULL).minimize(self.loss_gen, var_list=generator_variables)
@@ -269,17 +269,17 @@ class Net():
         with tf.Session(graph = self.graph) as session:
             
            # Tensorboard area
-            loss_gen = tf.placeholder(tf.float32, shape=())
-            loss_dis = tf.placeholder(tf.float32, shape=())
-            img_pl = tf.placeholder(tf.float32, shape=self.shape_out)
+            self._loss_gen = tf.placeholder(tf.float32, shape=())
+            self._loss_dis = tf.placeholder(tf.float32, shape=())
+            self.img_pl = tf.placeholder(tf.float32, shape=self.shape_out)
 
-            score_summary_op = tf.summary.merge([
-                tf.summary.scalar('Generator_loss', loss_gen),
-                tf.summary.scalar('Discriminator_loss_real', loss_dis),
-                tf.summary.image('Generated_images', img_pl, 128)
+            self.score_summary_op = tf.summary.merge([
+                tf.summary.scalar('Generator_loss', self._loss_gen),
+                tf.summary.scalar('Discriminator_loss_real', self._loss_dis),
+                tf.summary.image('Generated_images', self.img_pl, 128)
             ])
             logdir = self.param.TENSORBOARD_DIR + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
-            writer = tf.summary.FileWriter(logdir, session.graph)
+            self.writer = tf.summary.FileWriter(logdir, session.graph)
 
             # weight initialization
             session.run(tf.global_variables_initializer())
@@ -291,20 +291,11 @@ class Net():
                 
                 # lr = (self.param.S_LEARNING_RATE_FULL*(self.param.NUM_EPOCHS_FULL-epoch-1)+self.param.F_LEARNING_RATE_FULL*epoch)/(self.param.NUM_EPOCHS_FULL-1)
                 # lr = self.param.F_LEARNING_RATE_FULL
-                loss1, loss2, img_vis = self._training_epoch(session)
+                self._training_epoch(session)
 
-                val_imgs = session.run(self.out_ruido, feed_dict = {self.ph_gen: self.noise_validation})
                 # print("Salvou as imagens!")
                 # self.visualiza_and_save(img_vis, epoch)
-                scores_summary = session.run(
-                    score_summary_op,
-                    feed_dict={
-                        loss_gen: loss2,
-                        loss_dis: loss1,
-                        img_pl: val_imgs,
-                        self.is_training: False
-                    })
-                writer.add_summary(scores_summary, global_step=epoch)
+                
 
             path_model = self.param.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
             saver.save(session, path_model)
@@ -332,12 +323,21 @@ class Net():
             feed = {self.ph_gen: x_noise}
             ret2 = session.run([self.generator_train_op, self.loss_gen, self.out_ruido], feed_dict=feed)
 
-            img = ret2[2]
             disc_loss = ret1[1]
             gen_loss = ret2[1]
+            if j % 20 == 0:
+                val_imgs = session.run(self.out_ruido, feed_dict = {self.ph_gen: self.noise_validation})
+                scores_summary = session.run(
+                    self.score_summary_op,
+                    feed_dict={
+                        self._loss_gen: gen_loss,
+                        self._loss_dis: disc_loss,
+                        self.img_pl: val_imgs,
+                        self.is_training: False
+                    })
+                self.writer.add_summary(scores_summary, global_step=j)
 
         print('Time:'+str(time.time()-start)+ ' Loss_dis:'+str(disc_loss)+' Loss_gen:'+str(gen_loss))
-        return disc_loss, gen_loss, img
 
     def visualiza_and_save(self, imgs, ep):
         N = len(imgs)
