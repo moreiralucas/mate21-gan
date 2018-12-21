@@ -243,6 +243,7 @@ class Net():
         self.param = p
         self.shape_out = (None, 32, 32, 1)
         self.noise_validation = self._get_noise(128)
+        self.step = 0
 
         with self.graph.as_default():
             self.ph_gen = tf.placeholder(tf.float32, shape = (None, 64))
@@ -296,7 +297,7 @@ class Net():
             # full optimization
             for epoch in range(self.param.NUM_EPOCHS_FULL):
                 print('Epoch: '+ str(epoch+1), end=' ')
-                self._training_epoch(session, epoch)
+                self._training_epoch(session, epoch+1)
 
             path_model = self.param.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
             saver.save(session, path_model)
@@ -335,7 +336,8 @@ class Net():
                         self.img_pl: val_imgs,
                         self.is_training: False
                     })
-                self.writer.add_summary(scores_summary, global_step=ep+j)
+                self.writer.add_summary(scores_summary, global_step=self.step)
+                self.step += 1
 
         print('Time:'+str(time.time()-start)+ ' Loss_dis:'+str(disc_loss)+' Loss_gen:'+str(gen_loss))
 
