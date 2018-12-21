@@ -202,14 +202,14 @@ from parameters import Parameters
 
 def generator(X, isTraining=False, seed=42):
     with tf.variable_scope('generator'): # generator
-        out_img = tf.layers.dense(X, 8 * 8 * 64, activation=tf.nn.leaky_relu)
-        out_img = tf.reshape(out_img, [-1, 8, 8, 64])
+        out_img = tf.layers.dense(X, 8 * 8 * 256, activation=tf.nn.leaky_relu)
+        out_img = tf.reshape(out_img, [-1, 8, 8, 256])
 
+        out_img = tf.layers.conv2d_transpose(out_img, 64, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
         out_img = tf.layers.conv2d_transpose(out_img, 32, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
-
         out_img = tf.layers.conv2d_transpose(out_img, 16, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
+        out_img = tf.layers.conv2d_transpose(out_img, 1, (3, 3), (1 , 1), padding='same', activation=tf.nn.sigmoid)
         
-        out_img = tf.layers.conv2d_transpose(out_img, 1, (3, 3), (2, 2), padding='same', activation=tf.nn.sigmoid)
         return out_img
 
 def discriminator(X, reuse_variables=None, is_training=True):
