@@ -202,30 +202,38 @@ from parameters import Parameters
 
 def generator(X, isTraining=False, seed=42):
     with tf.variable_scope('generator'): # generator
-        out_img = tf.layers.dense(X, 8 * 8 * 256, activation=tf.nn.leaky_relu)
-        out_img = tf.reshape(out_img, [-1, 8, 8, 256])
+        print("Generator")
+        out_img = tf.layers.dense(X, 16 * 16, activation=tf.nn.leaky_relu)
+        print(out_img.shape)
+        out_img = tf.reshape(out_img, [-1, 16, 16, 1])
+        print(out_img.shape)
+        out_img = tf.layers.conv2d_transpose(out_img, 1, (3, 3), (2, 2), padding='same', activation=tf.nn.sigmoid)
+        print(out_img.shape)
 
-        out_img = tf.layers.conv2d_transpose(out_img, 64, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
-        out_img = tf.layers.conv2d_transpose(out_img, 32, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
-        out_img = tf.layers.conv2d_transpose(out_img, 16, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
-        out_img = tf.layers.conv2d_transpose(out_img, 1, (3, 3), (1 , 1), padding='same', activation=tf.nn.sigmoid)
-        
+        # out_img = tf.layers.conv2d_transpose(out_img, 32, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
+        # out_img = tf.layers.conv2d_transpose(out_img, 16, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
+        # out_img = tf.layers.conv2d_transpose(out_img, 1, (3, 3), (1 , 1), padding='same', activation=tf.nn.sigmoid)
+
         return out_img
 
 def discriminator(X, reuse_variables=None, is_training=True):
     with tf.variable_scope('discriminator', reuse=reuse_variables): # discriminator -> encoder
+        print("Discriminator")
         out = tf.layers.conv2d(X, 16, (5, 5), (1, 1), padding='same', activation=tf.nn.leaky_relu)
-        out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
+        print(out.shape)
+        # out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
 
-        out = tf.layers.conv2d(out, 32, (3, 3), (1, 1), padding='same', activation=tf.nn.leaky_relu)
-        out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
+        # out = tf.layers.conv2d(out, 32, (3, 3), (1, 1), padding='same', activation=tf.nn.leaky_relu)
+        # out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
         
-        out = tf.layers.conv2d(out, 64, (3, 3), (1, 1), padding='same', activation=tf.nn.leaky_relu)
-        out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
+        # out = tf.layers.conv2d(out, 64, (3, 3), (1, 1), padding='same', activation=tf.nn.leaky_relu)
+        # out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
         
-        out = tf.reshape(out,[-1, out.shape[1] * out.shape[2] * out.shape[3]])
+        # out = tf.reshape(out,[-1, out.shape[1] * out.shape[2] * out.shape[3]])
         out = tf.layers.dense(out, 256, activation=tf.nn.leaky_relu)
+        print(out.shape)
         out = tf.layers.dense(out, 1, activation=None)
+        print(out.shape)
         return out
 
 class Net():
@@ -233,7 +241,7 @@ class Net():
         self.train = input_train
         self.graph = tf.Graph()
         self.param = p
-        self.shape_out = (None, 64, 64, 1)
+        self.shape_out = (None, 32, 32, 1)
         self.noise_validation = self._get_noise(128)
 
         with self.graph.as_default():
@@ -257,8 +265,8 @@ class Net():
             self.loss_gen = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_ruido, labels = tf.ones_like(self.out_ruido)))
             self.loss_dis = tf.reduce_mean(tf.concat([reduce_sum_r, reduce_sum_f], axis=0))
 
-            self.discriminator_train_op = tf.train.AdamOptimizer(learning_rate=self.param.LEARNING_RATE_FULL).minimize(self.loss_dis, var_list=discriminator_variables)
-            self.generator_train_op = tf.train.AdamOptimizer(learning_rate=self.param.LEARNING_RATE_FULL).minimize(self.loss_gen, var_list=generator_variables)
+            self.discriminator_train_op = tf.train.AdamOptimizer(learning_rate=self.param.LEARNING_RATE_DISC).minimize(self.loss_dis, var_list=discriminator_variables)
+            self.generator_train_op = tf.train.AdamOptimizer(learning_rate=self.param.LEARNING_RATE_GEN).minimize(self.loss_gen, var_list=generator_variables)
 
     def _get_noise(self, batch_size, noise_dim=64):
         return np.random.normal(size=[batch_size, noise_dim])

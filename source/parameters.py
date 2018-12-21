@@ -10,8 +10,8 @@ import numpy as np
 class Parameters:
     def __init__(self):
         # Image
-        self.IMAGE_HEIGHT = 64  # height of the image / rows
-        self.IMAGE_WIDTH = 64   # width of the image / cols
+        self.IMAGE_HEIGHT = 32  # height of the image / rows
+        self.IMAGE_WIDTH = 32   # width of the image / cols
         self.NUM_CHANNELS = 1   # number of channels of the image
         # Database
         self.TRAIN_FOLDER = 'data_part1/train' # folder with training images
@@ -21,7 +21,8 @@ class Parameters:
         self.LOG_DIR_MODEL = 'model/'
         self.TENSORBOARD_DIR = 'tensorboard/'
         self.NUM_EPOCHS_FULL = 50000
-        self.LEARNING_RATE_FULL = 1e-4
+        self.LEARNING_RATE_DISC = 1e-4
+        self.LEARNING_RATE_GEN = 1e-4
         self.F_LEARNING_RATE_FULL = 0.001
         self.BATCH_SIZE = 64
         self.TOLERANCE = 10
