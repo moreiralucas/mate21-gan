@@ -20,7 +20,7 @@ def generator(X, isTraining=False, seed=42):
         print("out_img.shape: ")
         out_img = tf.layers.conv2d_transpose(out_img, 1, (5, 5), (2, 2), use_bias=False, padding="same", kernel_initializer=tf.glorot_uniform_initializer(seed))
         print(out_img.shape)
-        out_img = tf.layers.batch_normalization(out_img, training=isTraining)
+        # out_img = tf.layers.batch_normalization(out_img, training=isTraining)
         print(out_img.shape)
         out_img = tf.nn.leaky_relu(out_img)
     return out_img
