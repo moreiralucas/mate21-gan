@@ -138,7 +138,7 @@ class Net():
             ret1 = session.run([self.discriminator_train_op, self.loss_dis], feed_dict = {self.ph_dis: x_batch, self.ph_gen: x_noise, self.learning_rate: lr})
             
             x_noise = self._get_noise(self.param.BATCH_SIZE)
-            ret2 = session.run([self.generator_train_op, self.loss_gen, self.out_ruido], feed_dict = {self.ph_gen: x_noise, self.learning_rate: lr})
+            ret2 = session.run([self.generator_train_op, self.loss_gen, self.generator_train_op], feed_dict = {self.ph_gen: x_noise, self.learning_rate: lr})
 
             img = ret2[2]
             train_loss1 += ret1[1]*self.param.BATCH_SIZE
