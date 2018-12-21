@@ -70,18 +70,25 @@ class Net():
         p = Parameters()
         d = Dataset()
         with tf.Session(graph = self.graph) as session:
-            """
+            
             # Tensorboard area
-            tf.summary.scalar('Generator_loss', self.loss_gen)
-            tf.summary.scalar('Discriminator_loss_real', self.loss_dis_r)
-            tf.summary.scalar('Discriminator_loss_fake', self.loss_dis_f)
+            # loss_gen = tf.placeholder(tf.float32, shape=())
+            # loss_dis = tf.placeholder(tf.float32, shape=())
+            img_pl = tf.placeholder(tf.float32, shape=(None, 16, 16, 1))
+
+            score_summary_op = tf.summary.merge([
+                # tf.summary.scalar('Generator_loss', loss_gen),
+                # tf.summary.scalar('Discriminator_loss_real', loss_dis),
+                tf.summary.image('Generated_images', img_pl)
+                # tf.summary.scalar('loss', self.loss_dis)
+            ])
 
             # imgs_to_tb = generator(self.ph_gen, re=tf.AUTO_REUSE)
-            tf.summary.image('Generated_images', [None, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, p.NUM_CHANNELS], 6)
-            self.merged = tf.summary.merge_all()
+            # tf.summary.image('Generated_images', [None, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, p.NUM_CHANNELS], 6)
+            # self.merged = tf.summary.merge_all()
             logdir = p.TENSORBOARD_DIR + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
-            self.writer = tf.summary.FileWriter(logdir, session.graph)
-            """
+            writer = tf.summary.FileWriter(logdir, session.graph)
+            
             # weight initialization
             session.run(tf.global_variables_initializer())
             saver = tf.train.Saver()
@@ -96,6 +103,15 @@ class Net():
                 if epoch % 100 == 0:
                     print("Salvou as imagens!")
                     self.visualiza_and_save(img_vis, epoch)
+                    scores_summary = session.run(
+                        score_summary_op,
+                        feed_dict={
+                            # loss_gen: loss1,
+                            # loss_dir: loss2,
+                            img_pl: img_vis
+                        })
+                    writer.add_summary(scores_summary, global_step=epoch)
+                    writer.flush()
 
             path_model = p.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
             saver.save(session, path_model)
