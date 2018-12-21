@@ -60,9 +60,8 @@ class Net():
             self.discriminator_train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss_dis, var_list=discriminator_variables)
             self.generator_train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss_gen, var_list=generator_variables)
 
-    def _get_noise(self, batch_size):
+    def _get_noise(self, batch_size, noise_dim=64):
         mu, sigma = 0, 1.0 # mean and standard deviation
-        noise_dim = 64
         z = np.random.normal(mu, sigma, size=[batch_size, noise_dim])
         return z
 
@@ -138,7 +137,7 @@ class Net():
             ret2 = session.run([self.generator_train_op, self.loss_gen, self.out_ruido], feed_dict = {self.ph_gen: x_noise, self.learning_rate: lr})
 
             img = ret2[2]
-            train_loss1 += ret1[1]*p.BATCH_SIZE
+            train_loss1 += ret1[0]*p.BATCH_SIZE
             train_loss2 += ret2[1]*p.BATCH_SIZE
 
         pass_size = (len(self.train) - len(self.train) % p.BATCH_SIZE)
@@ -155,3 +154,32 @@ class Net():
                 img = cv2.resize(img, (0,0), fx=2.0, fy=2.0)
                 cv2.imwrite(path, img)
             cont += 1
+
+    def image_generator(self, input_noise, height=64, width=64, num_channels=1):
+        p = Parameters()
+        path_model = p.LOG_DIR_MODEL + p.NAME_OF_BEST_MODEL
+        path_img_output = 'output/'
+
+        with tf.Session(graph = self.graph) as session:
+            saver = tf.train.Saver(max_to_keep=0)
+            saver.restore(session, path_model)
+            #num_images = len(input_noise)
+
+            #predicao = np.empty([num_images, height, width, num_channels], dtype=np.uint8)
+            for noise in input_noise:
+                image_name = noise[64] # Recupera o nome da imagem que é o último elemento da lista
+                input_noise = input_noise[:64] # ou é input_noise[:64 - 1]?
+
+                feed_dict = {self.ph_gen: noise}
+                ret = session.run([self.out_ruido], feed_dict)
+                print("ret.shape" + str(ret.shape))
+
+                self._save_image(ret, path_img_output + str(image_name))
+
+    def _save_image(self, img, path='output/img.png'):
+        print(path)
+        print("img.shape: " + str(img.shape))
+        # height, width, channels = img.shape
+        # img = img.reshape(height, width)
+        # img = cv2.resize(img, (self.param.IMAGE_HEIGHT, self.param.IMAGE_WIDTH))
+        # cv2.imwrite(path, img)
