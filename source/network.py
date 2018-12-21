@@ -15,6 +15,9 @@ def generator(X):
         out_img = tf.layers.dense(X, 128, activation=tf.nn.relu)
         out_img = tf.layers.dense(out_img, 256, activation=tf.nn.sigmoid)
         out_img = tf.reshape(out_img, (-1, 16, 16, 1))
+        out_img = tf.layers.conv2d_transpose(out_img, 1, (4, 4), (2, 2), padding='same', activation=tf.nn.tanh)
+        print("out_img.shape: ")
+        print(out_img.shape)
     return out_img
 
 def discriminator(X, reuse_variables=None, is_training=True):
@@ -33,7 +36,7 @@ class Net():
         self.train = input_train
         self.graph = tf.Graph()
         self.param = p
-        self.shape_out = (None, 16, 16, 1)
+        self.shape_out = (None, 32, 32, 1)
 
         with self.graph.as_default():
             self.ph_gen = tf.placeholder(tf.float32, shape = (None, 64))
@@ -50,7 +53,7 @@ class Net():
             discriminator_variables = [v for v in tf.global_variables() if v.name.startswith('discriminator')]
             generator_variables = [v for v in tf.global_variables() if v.name.startswith('generator')]
 
-            self.loss_dis_r = tf.reduce_mean(tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_real, labels = tf.ones_like(self.out_real))))
+            self.loss_dis_r = tf.reduce_mean(tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_real, labels = tf.ones_like(self.out_real) * 0.9)))
             self.loss_gen = tf.reduce_mean(tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_ruido, labels = tf.ones_like(self.out_ruido))))
             self.loss_dis_f = tf.reduce_mean(tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_fake, labels = tf.zeros_like(self.out_fake))))
 
