@@ -17,7 +17,7 @@ def generator(X):
         out_img = tf.reshape(out_img, (-1, 16, 16, 1))
     return out_img
 
-def discriminator(X, reuse_variables=None):
+def discriminator(X, reuse_variables=None, is_training=True):
     with tf.variable_scope('discriminator', reuse=reuse_variables): # discriminator -> encoder
         out = tf.layers.dense(X, 256, activation=tf.nn.relu)
         out = tf.layers.dense(out, 1, activation=None)
@@ -33,13 +33,14 @@ class Net():
         self.train = input_train
         self.graph = tf.Graph()
         self.param = p
+        self.shape_out = (None, 16, 16, 1)
 
         with self.graph.as_default():
             self.ph_gen = tf.placeholder(tf.float32, shape = (None, 64))
             self.ph_dis = tf.placeholder(tf.float32, shape = (None, self.param.IMAGE_HEIGHT, self.param.IMAGE_WIDTH, self.param.NUM_CHANNELS))
 
             self.learning_rate = tf.placeholder(tf.float32)
-            # self.is_training = tf.placeholder(tf.bool)
+            self.is_training = tf.placeholder(tf.bool)
             
             # meio batch discriminator(real) + meio batch pro generator
             self.out_real = discriminator(self.ph_dis)
@@ -91,7 +92,7 @@ class Net():
                 
                 lr = (self.param.S_LEARNING_RATE_FULL*(self.param.NUM_EPOCHS_FULL-epoch-1)+self.param.F_LEARNING_RATE_FULL*epoch)/(self.param.NUM_EPOCHS_FULL-1)
                 loss1, loss2, img_vis = self._training_epoch(session, lr)
-                
+
                 if epoch % 100 == 0:
                     # print("Salvou as imagens!")
                     # self.visualiza_and_save(img_vis, epoch)
