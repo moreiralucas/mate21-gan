@@ -105,8 +105,8 @@ class Net():
             for epoch in range(self.param.NUM_EPOCHS_FULL):
                 print('Epoch: '+ str(epoch+1), end=' ')
                 
-                # lr = (self.param.S_LEARNING_RATE_FULL*(self.param.NUM_EPOCHS_FULL-epoch-1)+self.param.F_LEARNING_RATE_FULL*epoch)/(self.param.NUM_EPOCHS_FULL-1)
-                lr = self.param.F_LEARNING_RATE_FULL
+                lr = (self.param.S_LEARNING_RATE_FULL*(self.param.NUM_EPOCHS_FULL-epoch-1)+self.param.F_LEARNING_RATE_FULL*epoch)/(self.param.NUM_EPOCHS_FULL-1)
+                # lr = self.param.F_LEARNING_RATE_FULL
                 loss1, loss2, img_vis = self._training_epoch(session, lr)
 
                 if epoch % 5 == 0:
@@ -121,7 +121,6 @@ class Net():
                             self.is_training: False
                         })
                     writer.add_summary(scores_summary, global_step=epoch)
-                    writer.flush()
 
             path_model = self.param.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
             saver.save(session, path_model)
