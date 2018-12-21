@@ -109,6 +109,7 @@ class Net():
                         })
                     writer.add_summary(scores_summary, global_step=epoch)
                     writer.flush()
+                exit(0)
 
             path_model = self.param.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
             saver.save(session, path_model)
