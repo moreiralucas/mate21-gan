@@ -21,7 +21,7 @@ def main():
     # d.set_angles(np.linspace(-10, 10, 3))
 
     # Carrega as imagens do treino e do test com suas respectivas labels
-    train = d.load_all_images(p.TRAIN_FOLDER, p.TEST_FOLDER, height=32, width=32, num_channels=1)
+    train = d.load_all_images(p.TRAIN_FOLDER, p.TEST_FOLDER)
     # train = train[:300]
     print("size of train: {}".format(len(train)))
     
