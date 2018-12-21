@@ -79,7 +79,7 @@ class Net():
             score_summary_op = tf.summary.merge([
                 # tf.summary.scalar('Generator_loss', loss_gen),
                 # tf.summary.scalar('Discriminator_loss_real', loss_dis),
-                tf.summary.image('Generated_images', img_pl)
+                tf.summary.image('Generated_images', img_pl, 9)
                 # tf.summary.scalar('loss', self.loss_dis)
             ])
 
