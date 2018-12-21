@@ -93,7 +93,7 @@ class Net():
                 lr = (self.param.S_LEARNING_RATE_FULL*(self.param.NUM_EPOCHS_FULL-epoch-1)+self.param.F_LEARNING_RATE_FULL*epoch)/(self.param.NUM_EPOCHS_FULL-1)
                 loss1, loss2, img_vis = self._training_epoch(session, lr)
 
-                if epoch % 100 == 0:
+                if epoch % 20 == 0:
                     # print("Salvou as imagens!")
                     # self.visualiza_and_save(img_vis, epoch)
                     scores_summary = session.run(
