@@ -24,16 +24,11 @@ def discriminator(X, reuse_variables=None, is_training=True):
     return out
 
 class Net():
-    # ---------------------------------------------------------------------------------------------------------- #
-    # Description:                                                                                               #
-    #         Load the training set, shuffle its images and then split them in training and validation subsets.  #
-    #         After that, load the testing set.                                                                  #
-    # ---------------------------------------------------------------------------------------------------------- #
     def __init__(self, input_train, p):
         self.train = input_train
         self.graph = tf.Graph()
         self.param = p
-        self.shape_out = (None, 16, 16, 1)
+        self.shape_out = (None, 32, 32, 1)
 
         with self.graph.as_default():
             self.ph_gen = tf.placeholder(tf.float32, shape = (None, 64))
