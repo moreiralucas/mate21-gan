@@ -10,14 +10,19 @@ import cv2
 from data import Dataset
 from parameters import Parameters
 
-def generator(X):
+def generator(X, isTraining=False, seed=42):
     with tf.variable_scope('generator'): # generator
         out_img = tf.layers.dense(X, 128, activation=tf.nn.relu)
-        out_img = tf.layers.dense(out_img, 256, activation=tf.nn.sigmoid)
+        out_img = tf.layers.dense(out_img, 256, activation=tf.nn.relu)
         out_img = tf.reshape(out_img, (-1, 16, 16, 1))
-        out_img = tf.layers.conv2d_transpose(out_img, 1, (4, 4), (2, 2), padding='same', activation=tf.nn.tanh)
+        #out_img = tf.layers.conv2d_transpose(out_img, 1, (4, 4), (2, 2), padding='same', activation=tf.nn.tanh)
+
         print("out_img.shape: ")
+        out_img = tf.layers.conv2d_transpose(out_img, 16, (5, 5), (2, 2), use_bias=False, padding="same", kernel_initializer=tf.glorot_uniform_initializer(seed))
         print(out_img.shape)
+		out_img = tf.layers.batch_normalization(out_img, training=isTraining)
+        print(out_img.shape)
+		out_img = tf.nn.leaky_relu(out_img)
     return out_img
 
 def discriminator(X, reuse_variables=None, is_training=True):
@@ -47,7 +52,7 @@ class Net():
             
             # meio batch discriminator(real) + meio batch pro generator
             self.out_real = discriminator(self.ph_dis)
-            self.out_ruido = generator(self.ph_gen)
+            self.out_ruido = generator(self.ph_gen, True)
             self.out_fake = discriminator(self.out_ruido, reuse_variables=True)
 
             discriminator_variables = [v for v in tf.global_variables() if v.name.startswith('discriminator')]
@@ -94,9 +99,10 @@ class Net():
                 print('Epoch: '+ str(epoch+1), end=' ')
                 
                 lr = (self.param.S_LEARNING_RATE_FULL*(self.param.NUM_EPOCHS_FULL-epoch-1)+self.param.F_LEARNING_RATE_FULL*epoch)/(self.param.NUM_EPOCHS_FULL-1)
+                # lr = p.F_LEARNING_RATE_FULL
                 loss1, loss2, img_vis = self._training_epoch(session, lr)
 
-                if epoch % 20 == 0:
+                if epoch % 5 == 0:
                     # print("Salvou as imagens!")
                     # self.visualiza_and_save(img_vis, epoch)
                     scores_summary = session.run(
@@ -109,7 +115,6 @@ class Net():
                         })
                     writer.add_summary(scores_summary, global_step=epoch)
                     writer.flush()
-                exit(0)
 
             path_model = self.param.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
             saver.save(session, path_model)
