@@ -68,24 +68,19 @@ class Net():
         d = Dataset()
         with tf.Session(graph = self.graph) as session:
             
-            # Tensorboard area
-            # loss_gen = tf.placeholder(tf.float32, shape=())
-            # loss_dis = tf.placeholder(tf.float32, shape=())
-            img_pl = tf.placeholder(tf.float32, shape=(None, 16, 16, 1))
+           # Tensorboard area
+            loss_gen = tf.placeholder(tf.float32, shape=())
+            loss_dis = tf.placeholder(tf.float32, shape=())
+            img_pl = tf.placeholder(tf.float32, shape=self.shape_out)
 
             score_summary_op = tf.summary.merge([
-                # tf.summary.scalar('Generator_loss', loss_gen),
-                # tf.summary.scalar('Discriminator_loss_real', loss_dis),
+                tf.summary.scalar('Generator_loss', loss_gen),
+                tf.summary.scalar('Discriminator_loss_real', loss_dis),
                 tf.summary.image('Generated_images', img_pl, 9)
-                # tf.summary.scalar('loss', self.loss_dis)
             ])
-
-            # imgs_to_tb = generator(self.ph_gen, re=tf.AUTO_REUSE)
-            # tf.summary.image('Generated_images', [None, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, p.NUM_CHANNELS], 6)
-            # self.merged = tf.summary.merge_all()
             logdir = self.param.TENSORBOARD_DIR + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
             writer = tf.summary.FileWriter(logdir, session.graph)
-            
+
             # weight initialization
             session.run(tf.global_variables_initializer())
             saver = tf.train.Saver()
@@ -95,7 +90,7 @@ class Net():
                 print('Epoch: '+ str(epoch+1), end=' ')
                 
                 lr = (self.param.S_LEARNING_RATE_FULL*(self.param.NUM_EPOCHS_FULL-epoch-1)+self.param.F_LEARNING_RATE_FULL*epoch)/(self.param.NUM_EPOCHS_FULL-1)
-                img_vis = self._training_epoch(session, lr)
+                loss1, loss2, img_vis = self._training_epoch(session, lr)
                 
                 if epoch % 100 == 0:
                     # print("Salvou as imagens!")
@@ -103,9 +98,10 @@ class Net():
                     scores_summary = session.run(
                         score_summary_op,
                         feed_dict={
-                            # loss_gen: loss1,
-                            # loss_dir: loss2,
-                            img_pl: img_vis
+                            loss_gen: loss2,
+                            loss_dis: loss1,
+                            img_pl: img_vis,
+                            self.is_training: False
                         })
                     writer.add_summary(scores_summary, global_step=epoch)
                     writer.flush()
@@ -135,12 +131,12 @@ class Net():
             ret2 = session.run([self.generator_train_op, self.loss_gen, self.out_ruido], feed_dict = {self.ph_gen: x_noise, self.learning_rate: lr})
 
             img = ret2[2]
-            train_loss1 += ret1[0]*self.param.BATCH_SIZE
+            train_loss1 += ret1[1]*self.param.BATCH_SIZE
             train_loss2 += ret2[1]*self.param.BATCH_SIZE
 
         pass_size = (len(self.train) - len(self.train) % self.param.BATCH_SIZE)
         print('LR:'+str(lr  )+' Time:'+str(time.time()-start)+ ' Loss_dis:'+str(train_loss1/pass_size)+' Loss_gen:'+str(train_loss2/pass_size))
-        return img
+        return train_loss1, train_loss2, img
 
     def visualiza_and_save(self, imgs, ep):
         N = len(imgs)
