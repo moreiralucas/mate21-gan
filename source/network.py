@@ -296,13 +296,13 @@ class Net():
             # full optimization
             for epoch in range(self.param.NUM_EPOCHS_FULL):
                 print('Epoch: '+ str(epoch+1), end=' ')
-                self._training_epoch(session)
+                self._training_epoch(session, epoch)
 
             path_model = self.param.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
             saver.save(session, path_model)
             print("The model has saved in: " + path_model)
 
-    def _training_epoch(self, session):
+    def _training_epoch(self, session, ep):
         batch_list = np.random.permutation(len(self.train))
         p = Parameters()
         start = time.time()
@@ -335,7 +335,7 @@ class Net():
                         self.img_pl: val_imgs,
                         self.is_training: False
                     })
-                self.writer.add_summary(scores_summary, global_step=j)
+                self.writer.add_summary(scores_summary, global_step=ep+j)
 
         print('Time:'+str(time.time()-start)+ ' Loss_dis:'+str(disc_loss)+' Loss_gen:'+str(gen_loss))
 
