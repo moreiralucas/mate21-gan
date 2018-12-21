@@ -17,14 +17,11 @@ def generator(X):
         out_img = tf.reshape(out_img, (-1, 16, 16, 1))
     return out_img
 
-# self.X = tf.placeholder(tf.float32, shape = (None, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, p.NUM_CHANNELS))
 def discriminator(X, reuse_variables=None):
     with tf.variable_scope('discriminator', reuse=reuse_variables): # discriminator -> encoder
         out = tf.layers.dense(X, 256, activation=tf.nn.relu)
         out = tf.layers.dense(out, 1, activation=None)
     return out
-
-p = Parameters()
 
 class Net():
     # ---------------------------------------------------------------------------------------------------------- #
@@ -35,10 +32,11 @@ class Net():
     def __init__(self, input_train, p):
         self.train = input_train
         self.graph = tf.Graph()
+        self.param = p
 
         with self.graph.as_default():
             self.ph_gen = tf.placeholder(tf.float32, shape = (None, 64))
-            self.ph_dis = tf.placeholder(tf.float32, shape = (None, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, p.NUM_CHANNELS))
+            self.ph_dis = tf.placeholder(tf.float32, shape = (None, self.param.IMAGE_HEIGHT, self.param.IMAGE_WIDTH, self.param.NUM_CHANNELS))
 
             self.learning_rate = tf.placeholder(tf.float32)
             # self.is_training = tf.placeholder(tf.bool)
@@ -85,7 +83,7 @@ class Net():
             # imgs_to_tb = generator(self.ph_gen, re=tf.AUTO_REUSE)
             # tf.summary.image('Generated_images', [None, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, p.NUM_CHANNELS], 6)
             # self.merged = tf.summary.merge_all()
-            logdir = p.TENSORBOARD_DIR + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
+            logdir = self.param.TENSORBOARD_DIR + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + "/"
             writer = tf.summary.FileWriter(logdir, session.graph)
             
             # weight initialization
@@ -93,10 +91,10 @@ class Net():
             saver = tf.train.Saver()
 
             # full optimization
-            for epoch in range(p.NUM_EPOCHS_FULL):
+            for epoch in range(self.param.NUM_EPOCHS_FULL):
                 print('Epoch: '+ str(epoch+1), end=' ')
                 
-                lr = (p.S_LEARNING_RATE_FULL*(p.NUM_EPOCHS_FULL-epoch-1)+p.F_LEARNING_RATE_FULL*epoch)/(p.NUM_EPOCHS_FULL-1)
+                lr = (self.param.S_LEARNING_RATE_FULL*(self.param.NUM_EPOCHS_FULL-epoch-1)+self.param.F_LEARNING_RATE_FULL*epoch)/(self.param.NUM_EPOCHS_FULL-1)
                 img_vis = self._training_epoch(session, lr)
                 
                 if epoch % 100 == 0:
@@ -112,7 +110,7 @@ class Net():
                     writer.add_summary(scores_summary, global_step=epoch)
                     writer.flush()
 
-            path_model = p.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
+            path_model = self.param.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
             saver.save(session, path_model)
             print("The model has saved in: " + path_model)
 
@@ -123,7 +121,7 @@ class Net():
         train_loss1 = 0
         train_loss2 = 0
         img = None
-        NEW_BATCH = p.BATCH_SIZE//2
+        NEW_BATCH = self.param.BATCH_SIZE//2
 
         for j in range(0, len(self.train), NEW_BATCH):
             if j+NEW_BATCH > len(self.train):
@@ -133,14 +131,14 @@ class Net():
             x_noise = self._get_noise(NEW_BATCH)
             ret1 = session.run([self.discriminator_train_op, self.loss_dis], feed_dict = {self.ph_dis: x_batch, self.ph_gen: x_noise, self.learning_rate: lr})
             
-            x_noise = self._get_noise(p.BATCH_SIZE)
+            x_noise = self._get_noise(self.param.BATCH_SIZE)
             ret2 = session.run([self.generator_train_op, self.loss_gen, self.out_ruido], feed_dict = {self.ph_gen: x_noise, self.learning_rate: lr})
 
             img = ret2[2]
-            train_loss1 += ret1[0]*p.BATCH_SIZE
-            train_loss2 += ret2[1]*p.BATCH_SIZE
+            train_loss1 += ret1[0]*self.param.BATCH_SIZE
+            train_loss2 += ret2[1]*self.param.BATCH_SIZE
 
-        pass_size = (len(self.train) - len(self.train) % p.BATCH_SIZE)
+        pass_size = (len(self.train) - len(self.train) % self.param.BATCH_SIZE)
         print('LR:'+str(lr  )+' Time:'+str(time.time()-start)+ ' Loss_dis:'+str(train_loss1/pass_size)+' Loss_gen:'+str(train_loss2/pass_size))
         return img
 
@@ -157,7 +155,7 @@ class Net():
 
     def image_generator(self, input_noise, height=64, width=64, num_channels=1):
         p = Parameters()
-        path_model = p.LOG_DIR_MODEL + p.NAME_OF_BEST_MODEL
+        path_model = self.param.LOG_DIR_MODEL + self.param.NAME_OF_BEST_MODEL
         path_img_output = 'output/'
 
         with tf.Session(graph = self.graph) as session:
