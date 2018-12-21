@@ -10,25 +10,40 @@ import cv2
 from data import Dataset
 from parameters import Parameters
 
-def generator(X):
+def generator(X, isTraining=False, seed=42):
     with tf.variable_scope('generator'): # generator
-        out_img = tf.layers.dense(X, 128, activation=tf.nn.relu)
-        out_img = tf.layers.dense(out_img, 256, activation=tf.nn.sigmoid)
-        out_img = tf.reshape(out_img, (-1, 16, 16, 1))
-    return out_img
+        out_img = tf.layers.dense(X, 8 * 8 * 64, activation=tf.nn.leaky_relu)
+        out_img = tf.reshape(out_img, [-1, 8, 8, 64])
+
+        out_img = tf.layers.conv2d_transpose(out_img, 32, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
+
+        out_img = tf.layers.conv2d_transpose(out_img, 16, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
+        
+        out_img = tf.layers.conv2d_transpose(out_img, 1, (3, 3), (2, 2), padding='same', activation=tf.nn.sigmoid)
+        return out_img
 
 def discriminator(X, reuse_variables=None, is_training=True):
     with tf.variable_scope('discriminator', reuse=reuse_variables): # discriminator -> encoder
-        out = tf.layers.dense(X, 256, activation=tf.nn.relu)
+        out = tf.layers.conv2d(X, 16, (5, 5), (1, 1), padding='same', activation=tf.nn.leaky_relu)
+        out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
+
+        out = tf.layers.conv2d(out, 32, (3, 3), (1, 1), padding='same', activation=tf.nn.leaky_relu)
+        out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
+        
+        out = tf.layers.conv2d(out, 64, (3, 3), (1, 1), padding='same', activation=tf.nn.leaky_relu)
+        out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
+        
+        out = tf.reshape(out,[-1, out.shape[1] * out.shape[2] * out.shape[3]])
+        out = tf.layers.dense(out, 256, activation=tf.nn.leaky_relu)
         out = tf.layers.dense(out, 1, activation=None)
-    return out
+        return out
 
 class Net():
     def __init__(self, input_train, p):
         self.train = input_train
         self.graph = tf.Graph()
         self.param = p
-        self.shape_out = (None, 32, 32, 1)
+        self.shape_out = (None, 64, 64, 1)
 
         with self.graph.as_default():
             self.ph_gen = tf.placeholder(tf.float32, shape = (None, 64))
@@ -39,13 +54,13 @@ class Net():
             
             # meio batch discriminator(real) + meio batch pro generator
             self.out_real = discriminator(self.ph_dis)
-            self.out_ruido = generator(self.ph_gen)
+            self.out_ruido = generator(self.ph_gen, True)
             self.out_fake = discriminator(self.out_ruido, reuse_variables=True)
 
             discriminator_variables = [v for v in tf.global_variables() if v.name.startswith('discriminator')]
             generator_variables = [v for v in tf.global_variables() if v.name.startswith('generator')]
 
-            self.loss_dis_r = tf.reduce_mean(tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_real, labels = tf.ones_like(self.out_real))))
+            self.loss_dis_r = tf.reduce_mean(tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_real, labels = tf.ones_like(self.out_real) * 0.9)))
             self.loss_gen = tf.reduce_mean(tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_ruido, labels = tf.ones_like(self.out_ruido))))
             self.loss_dis_f = tf.reduce_mean(tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_fake, labels = tf.zeros_like(self.out_fake))))
 
@@ -86,9 +101,10 @@ class Net():
                 print('Epoch: '+ str(epoch+1), end=' ')
                 
                 lr = (self.param.S_LEARNING_RATE_FULL*(self.param.NUM_EPOCHS_FULL-epoch-1)+self.param.F_LEARNING_RATE_FULL*epoch)/(self.param.NUM_EPOCHS_FULL-1)
+                # lr = self.param.F_LEARNING_RATE_FULL
                 loss1, loss2, img_vis = self._training_epoch(session, lr)
 
-                if epoch % 20 == 0:
+                if epoch % 5 == 0:
                     # print("Salvou as imagens!")
                     # self.visualiza_and_save(img_vis, epoch)
                     scores_summary = session.run(
@@ -100,7 +116,6 @@ class Net():
                             self.is_training: False
                         })
                     writer.add_summary(scores_summary, global_step=epoch)
-                    writer.flush()
 
             path_model = self.param.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
             saver.save(session, path_model)
@@ -121,10 +136,12 @@ class Net():
 
             x_batch = self.train.take(batch_list[j:j+NEW_BATCH], axis=0)
             x_noise = self._get_noise(NEW_BATCH)
-            ret1 = session.run([self.discriminator_train_op, self.loss_dis], feed_dict = {self.ph_dis: x_batch, self.ph_gen: x_noise, self.learning_rate: lr})
+            feed = {self.ph_dis: x_batch, self.ph_gen: x_noise, self.learning_rate: lr}
+            ret1 = session.run([self.discriminator_train_op, self.loss_dis], feed_dict=feed)
             
             x_noise = self._get_noise(self.param.BATCH_SIZE)
-            ret2 = session.run([self.generator_train_op, self.loss_gen, self.out_ruido], feed_dict = {self.ph_gen: x_noise, self.learning_rate: lr})
+            feed = {self.ph_gen: x_noise, self.learning_rate: lr}
+            ret2 = session.run([self.generator_train_op, self.loss_gen, self.out_ruido], feed_dict=feed)
 
             img = ret2[2]
             train_loss1 += ret1[1]*self.param.BATCH_SIZE
