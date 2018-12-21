@@ -18,7 +18,7 @@ def generator(X, isTraining=False, seed=42):
         #out_img = tf.layers.conv2d_transpose(out_img, 1, (4, 4), (2, 2), padding='same', activation=tf.nn.tanh)
 
         print("out_img.shape: ")
-        out_img = tf.layers.conv2d_transpose(out_img, 16, (5, 5), (2, 2), use_bias=False, padding="same", kernel_initializer=tf.glorot_uniform_initializer(seed))
+        out_img = tf.layers.conv2d_transpose(out_img, 1, (5, 5), (2, 2), use_bias=False, padding="same", kernel_initializer=tf.glorot_uniform_initializer(seed))
         print(out_img.shape)
         out_img = tf.layers.batch_normalization(out_img, training=isTraining)
         print(out_img.shape)
