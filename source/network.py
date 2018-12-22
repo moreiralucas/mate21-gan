@@ -76,8 +76,8 @@ class Net():
             reduce_sum_r = tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_real, labels = tf.ones_like(self.out_real))
             reduce_sum_f = tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_fake, labels = tf.zeros_like(self.out_fake))
 
-            self.loss_gen = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_ruido, labels = tf.ones_like(self.out_ruido)))
-            self.loss_dis = tf.reduce_mean(tf.concat([reduce_sum_r, reduce_sum_f], axis=0))
+            self.loss_gen = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits = self.out_fake, labels = tf.ones_like(self.out_fake)))
+            self.loss_dis = tf.reduce_mean(reduce_sum_r + reduce_sum_f)
 
             self.discriminator_train_op = tf.train.AdamOptimizer(learning_rate=self.param.LEARNING_RATE_DISC).minimize(self.loss_dis, var_list=discriminator_variables)
             self.generator_train_op = tf.train.AdamOptimizer(learning_rate=self.param.LEARNING_RATE_GEN).minimize(self.loss_gen, var_list=generator_variables)
@@ -132,11 +132,6 @@ class Net():
             x_noise = self._get_noise(NEW_BATCH)
             
             feed = {self.ph_dis: x_batch, self.ph_gen: x_noise}
-            print("x_batch.shape", end=' ')
-            print(x_batch.shape)
-            print("x_noise.shape", end=' ')
-            print(x_noise.shape)
-
             ret1 = session.run([self.discriminator_train_op, self.loss_dis], feed_dict=feed)
             
             x_noise = self._get_noise(self.param.BATCH_SIZE)
