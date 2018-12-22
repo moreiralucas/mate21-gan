@@ -10,13 +10,14 @@ import numpy as np
 class Parameters:
     def __init__(self):
         # Image
-        self.IMAGE_HEIGHT = 16  # height of the image / rows
-        self.IMAGE_WIDTH = 16   # width of the image / cols
+        self.IMAGE_HEIGHT = 32  # height of the image / rows
+        self.IMAGE_WIDTH = 32   # width of the image / cols
         self.NUM_CHANNELS = 1   # number of channels of the image
         # Database
         self.TRAIN_FOLDER = 'data_part1/train' # folder with training images
         self.TEST_FOLDER = 'data_part1/test'   # folder with testing images
         self.SPLIT_RATE = 0.80        # split rate for training and validation sets
+        self.COUNT_NOISE = 64
         # Training loop
         self.LOG_DIR_MODEL = 'model/'
         self.TENSORBOARD_DIR = 'tensorboard/'

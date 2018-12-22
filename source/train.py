@@ -22,7 +22,7 @@ def main():
 
     # Carrega as imagens do treino e do test com suas respectivas labels
     train = d.load_all_images(p.TRAIN_FOLDER, p.TEST_FOLDER, p.IMAGE_HEIGHT, p.IMAGE_WIDTH)
-    train = train[:300]
+    # train = train[:2000]
     train = train / 255.0
     
     print("size of train: {}".format(len(train)))

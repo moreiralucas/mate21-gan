@@ -11,28 +11,30 @@ from data import Dataset
 from parameters import Parameters
 
 def generator(X, isTraining=False, seed=42):
+    p = Parameters()
     with tf.variable_scope('generator'): # generator
         print("Generator")
-        out_img = tf.layers.dense(X, 16 * 16, activation=tf.nn.leaky_relu)
+        out_img = tf.layers.dense(X, p.IMAGE_HEIGHT * p.IMAGE_WIDTH, activation=tf.nn.leaky_relu)
         print(out_img.shape)
-        out_img = tf.reshape(out_img, [-1, 16, 16, 1])
+        out_img = tf.reshape(out_img, [-1, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, 1])
         print(out_img.shape)
-        # out_img = tf.layers.conv2d_transpose(out_img, 1, (3, 3), (2, 2), padding='same', activation=tf.nn.sigmoid)
-        # print(out_img.shape)
+        out_img = tf.layers.conv2d_transpose(out_img, 1, (3, 3), (1, 1), padding='same', activation=tf.nn.sigmoid)
+        print(out_img.shape)
 
         # out_img = tf.layers.conv2d_transpose(out_img, 32, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
         # out_img = tf.layers.conv2d_transpose(out_img, 16, (3, 3), (2, 2), padding='same', activation=tf.nn.leaky_relu)
         out_img = tf.layers.conv2d_transpose(out_img, 1, (3, 3), (1 , 1), padding='same', activation=tf.nn.sigmoid)
+        print(out_img.shape)
 
         return out_img
 
 def discriminator(X, reuse_variables=None, is_training=True):
     with tf.variable_scope('discriminator', reuse=reuse_variables): # discriminator -> encoder
-        print("Discriminator")
+        print("Discriminator: {}".format(X.shape))
         out = tf.layers.conv2d(X, 16, (3, 3), (1, 1), padding='same', activation=tf.nn.leaky_relu)
         print(out.shape)
         out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
-
+        print(out.shape)
         out = tf.layers.conv2d(out, 32, (3, 3), (1, 1), padding='same', activation=tf.nn.leaky_relu)
         print(out.shape)
         out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
@@ -54,12 +56,12 @@ class Net():
         self.train = input_train
         self.graph = tf.Graph()
         self.param = p
-        self.shape_out = (None, 16, 16, 1)
+        self.shape_out = (None, self.param.IMAGE_HEIGHT, self.param.IMAGE_WIDTH, self.param.NUM_CHANNELS)
         self.noise_validation = self._get_noise(128)
         self.step = 0
 
         with self.graph.as_default():
-            self.ph_gen = tf.placeholder(tf.float32, shape = (None, 64))
+            self.ph_gen = tf.placeholder(tf.float32, shape = (None, self.param.COUNT_NOISE))
             self.ph_dis = tf.placeholder(tf.float32, shape = (None, self.param.IMAGE_HEIGHT, self.param.IMAGE_WIDTH, self.param.NUM_CHANNELS))
 
             self.learning_rate = tf.placeholder(tf.float32)
