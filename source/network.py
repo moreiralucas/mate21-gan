@@ -19,12 +19,12 @@ def generator(X, is_training=False, seed=42):
         out_img = tf.reshape(out_img, [-1, p.IMAGE_HEIGHT, p.IMAGE_WIDTH, 1])
         print(out_img.shape)
 
-        out_img = tf.layers.conv2d_transpose(out_img, 1, (3, 3), (1, 1), padding='same', activation=tf.nn.leaky_relu)
+        out_img = tf.layers.conv2d_transpose(out_img, 1, (3, 3), (1, 1), padding='same')
         out_img = tf.nn.leaky_relu(features = tf.layers.batch_normalization(out_img, training=is_training), alpha = 0.2)
         print(out_img.shape)
 
         out_img = tf.layers.conv2d_transpose(out_img, 1, (3, 3), (1 , 1), padding='same', activation=tf.nn.sigmoid)
-        out_img = tf.nn.leaky_relu(features = tf.layers.batch_normalization(out_img, training=is_training), alpha = 0.2)
+        #out_img = tf.nn.leaky_relu(features = tf.layers.batch_normalization(out_img, training=is_training), alpha = 0.2)
         print(out_img.shape)
 
         return out_img
@@ -37,7 +37,7 @@ def discriminator(X, reuse_variables=None, is_training=True):
         out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
         print(out.shape)
         
-        out = tf.layers.conv2d(out, 32, (3, 3), (1, 1), padding='same', activation=tf.nn.leaky_relu)
+        out = tf.layers.conv2d(out, 32, (3, 3), (1, 1), padding='same')
         out = tf.nn.leaky_relu(features = tf.layers.batch_normalization(out, training=is_training), alpha = 0.2)
         print(out.shape)
         
