@@ -33,9 +33,9 @@ def main():
     print(train.shape)
         
     # Inicializa a rede
-    n = Net(train, p)
+    n = Net(p)
     # Inicia treino
-    n.treino()
+    n.treino(train)
 
 if __name__ == "__main__":
     main()

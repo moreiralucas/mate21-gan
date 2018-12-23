@@ -44,9 +44,6 @@ def discriminator(X, reuse_variables=None, is_training=True):
         out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
         print(out.shape)
         
-        # out = tf.layers.conv2d(out, 64, (3, 3), (1, 1), padding='same', activation=tf.nn.leaky_relu)
-        # out = tf.layers.average_pooling2d(out, (2, 2), (2, 2), padding='valid')
-        
         out = tf.layers.flatten(out)
         print(out.shape)
         out = tf.layers.dense(out, 256, activation=tf.nn.leaky_relu)
@@ -56,8 +53,7 @@ def discriminator(X, reuse_variables=None, is_training=True):
         return out
 
 class Net():
-    def __init__(self, input_train, p):
-        self.train = input_train
+    def __init__(self, p):
         self.graph = tf.Graph()
         self.param = p
         self.shape_out = (None, self.param.IMAGE_HEIGHT, self.param.IMAGE_WIDTH, self.param.NUM_CHANNELS)
@@ -91,7 +87,8 @@ class Net():
     def _get_noise(self, batch_size, noise_dim=64):
         return np.random.normal(size=[batch_size, noise_dim])
 
-    def treino(self):
+    def treino(self, input_train):
+        self.train = input_train
         p = Parameters()
         d = Dataset()
         with tf.Session(graph = self.graph) as session:
@@ -173,31 +170,19 @@ class Net():
                 cv2.imwrite(path, img)
             cont += 1
 
-    def image_generator(self, input_noise, height=64, width=64, num_channels=1):
-        p = Parameters()
+    def image_generator(self, input_noise, image_path, height=64, width=64, num_channels=1):
         path_model = self.param.LOG_DIR_MODEL + self.param.NAME_OF_BEST_MODEL
-        path_img_output = 'output/'
 
         with tf.Session(graph = self.graph) as session:
             saver = tf.train.Saver(max_to_keep=0)
             saver.restore(session, path_model)
-            #num_images = len(input_noise)
 
-            #predicao = np.empty([num_images, height, width, num_channels], dtype=np.uint8)
-            for noise in input_noise:
-                image_name = noise[64] # Recupera o nome da imagem que é o último elemento da lista
-                input_noise = input_noise[:64] # ou é input_noise[:64 - 1]?
+            feed_dict = {self.ph_gen: input_noise}
+            ret = session.run([self.out_ruido], feed_dict)
 
-                feed_dict = {self.ph_gen: noise}
-                ret = session.run([self.out_ruido], feed_dict)
-                print("ret.shape" + str(ret.shape))
+            self._save_image(ret[0], image_path)
 
-                self._save_image(ret, path_img_output + str(image_name))
-
-    def _save_image(self, img, path='output/img.png'):
+    def _save_image(self, img, path='output/img.png', height=64, width=64, num_channels=1):
         print(path)
-        print("img.shape: " + str(img.shape))
-        # height, width, channels = img.shape
-        # img = img.reshape(height, width)
-        # img = cv2.resize(img, (self.param.IMAGE_HEIGHT, self.param.IMAGE_WIDTH))
-        # cv2.imwrite(path, img)
+        img = cv2.resize(img, (height, width))
+        cv2.imwrite(path, img)

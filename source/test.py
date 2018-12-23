@@ -7,11 +7,27 @@ import cv2
 import sys
 
 from gan import Gan
+from parameters import Parameters
+from network import Net
 
 with open(sys.argv[1], 'r') as f:
 	l = [line.split() for line in f]
+
 zs = [[float(x) for x in line[:-1]] for line in l]
 X_name = [line[-1] for line in l]
-X_test = np.array(zs).reshape(-1, 8, 8, 1)
-print(X_name)
-print(X_test.shape, X_test.dtype)
+
+path_image = sys.argv[2]
+
+
+p = Parameters
+p.param.NAME_OF_BEST_MODEL = 'Definir nome'
+
+# Inicializa a rede
+n = Net(p)
+# Inicia treino
+
+
+for i in range(len(zs)):
+	noise = zs[i]
+	img_name = X_name[i]
+	n.image_generator(noise, img_name)
