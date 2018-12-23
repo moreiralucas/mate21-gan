@@ -21,7 +21,7 @@ class Parameters:
         # Training loop
         self.LOG_DIR_MODEL = 'model/'
         self.TENSORBOARD_DIR = 'tensorboard/'
-        self.NUM_EPOCHS_FULL = 4000
+        self.NUM_EPOCHS_FULL = 3000
         self.LEARNING_RATE_DISC = 1e-4
         self.LEARNING_RATE_GEN = 1e-4
         self.F_LEARNING_RATE_FULL = 0.001

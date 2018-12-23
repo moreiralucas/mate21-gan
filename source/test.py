@@ -18,9 +18,10 @@ X_name = [line[-1] for line in l]
 
 path_image = sys.argv[2]
 
+p = Parameters()
 
-p = Parameters
-p.param.NAME_OF_BEST_MODEL = 'Definir nome'
+if p.NAME_OF_BEST_MODEL is None:
+	raise Exception('Defina o modelo a ser carregado, no arquivo test.py')
 
 # Inicializa a rede
 n = Net(p)
@@ -30,4 +31,4 @@ n = Net(p)
 for i in range(len(zs)):
 	noise = zs[i]
 	img_name = X_name[i]
-	n.image_generator(noise, img_name)
+	n.image_generator(noise, path_image + '/' +img_name)
