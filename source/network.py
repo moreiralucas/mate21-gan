@@ -173,24 +173,16 @@ class Net():
 
     def image_generator(self, input_noise, image_path, height=64, width=64, num_channels=1):
         path_model = self.param.LOG_DIR_MODEL + self.param.NAME_OF_BEST_MODEL
-        print("path_model: ")
-        print(path_model)
-        print("image_path: ")
-        print(image_path)
         
         with tf.Session(graph = self.graph) as session:
             saver = tf.train.Saver(max_to_keep=0)
             saver.restore(session, path_model)
 
-            feed_dict = {self.ph_gen: input_noise}
+            feed_dict = {self.ph_gen: input_noise, self.is_training: False}
             ret = session.run([self.out_ruido], feed_dict)
             
-            print("image_path: ")
-            print(image_path)
-            self._save_image(ret[0], image_path)
+            self._save_image(ret[0][0], image_path)
 
     def _save_image(self, img, path='../output/img.png', height=64, width=64, num_channels=1):
-        print(path)
         img = cv2.resize(img, None, fx=2.0, fy=2.0)
-        # img = cv2.resize(img, (height, width))
         cv2.imwrite(path, img)
