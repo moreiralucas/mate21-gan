@@ -114,7 +114,6 @@ class Net():
             for epoch in range(self.param.NUM_EPOCHS_FULL):
                 print('Epoch: '+ str(epoch+1), end=' ')
                 self._training_epoch(session, epoch+1)
-                break
 
             path_model = self.param.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
             saver.save(session, path_model)
@@ -184,5 +183,22 @@ class Net():
             self._save_image(ret[0][0], image_path)
 
     def _save_image(self, img, path='../output/img.png', height=64, width=64, num_channels=1):
+        img -= np.amin(img)
+        img /= np.amax(img)
+        img *= 255.0
+        
+        # print(img)
+        # print(img.shape)
+        # exit(0)
+        # img = np.maximum(img, 255)
+        # img = np.minimum(img, 0)
+        # img = np.where(img >= 255, 255, img)
+        # np.where(x1 >= x2, x1, x2)
+
+        print("image: {}".format(path))
         img = cv2.resize(img, None, fx=2.0, fy=2.0)
         cv2.imwrite(path, img)
+        #cv2.imshow("View", img)
+        #cv2.waitKey(2000)
+        #cv2.destroyAllWindows()
+

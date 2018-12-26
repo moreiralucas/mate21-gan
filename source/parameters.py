@@ -1,11 +1,5 @@
 import tensorflow as tf
 import numpy as np
-# import random
-# import time
-# import sys
-# import os
-
-# from data import Dataset
 
 class Parameters:
     def __init__(self):
@@ -21,7 +15,7 @@ class Parameters:
         # Training loop
         self.LOG_DIR_MODEL = './model/'
         self.TENSORBOARD_DIR = 'tensorboard/'
-        self.NUM_EPOCHS_FULL = 2
+        self.NUM_EPOCHS_FULL = 1000
         self.LEARNING_RATE_DISC = 1e-4
         self.LEARNING_RATE_GEN = 1e-4
         self.F_LEARNING_RATE_FULL = 0.001
