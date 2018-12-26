@@ -6,7 +6,6 @@ import numpy as np
 import cv2
 import sys
 
-from gan import Gan
 from parameters import Parameters
 from network import Net
 
@@ -19,7 +18,7 @@ X_name = [line[-1] for line in l]
 path_image = sys.argv[2]
 
 p = Parameters()
-p.NAME_OF_BEST_MODEL = '20181223-204304_gan.ckpt'
+p.NAME_OF_BEST_MODEL = '20181223-202436_gan.ckpt'
 
 if p.NAME_OF_BEST_MODEL is None:
 	raise Exception('Defina o modelo a ser carregado, no arquivo test.py')
