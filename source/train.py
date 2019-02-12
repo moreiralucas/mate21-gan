@@ -24,7 +24,7 @@ def main():
 
     # Carrega as imagens do treino e do test com suas respectivas labels
     train = d.load_all_images(p.TRAIN_FOLDER, p.TEST_FOLDER, p.IMAGE_HEIGHT, p.IMAGE_WIDTH)
-    train = train[:5000]
+    #train = train[:5000]
     train = train / 255.0
     
     print("size of train: {}".format(len(train)))
@@ -33,7 +33,7 @@ def main():
     train = d.shuffle(train, seed=42)
     
     print(train.shape)
-    p.NUM_EPOCHS_FULL = 10
+#    p.NUM_EPOCHS_FULL = 10
     # Inicializa a rede
     n = Net(p)
     # Inicia treino

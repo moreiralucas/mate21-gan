@@ -114,7 +114,7 @@ class Net():
             for epoch in range(self.param.NUM_EPOCHS_FULL):
                 print('Epoch: '+ str(epoch+1), end=' ')
                 self._training_epoch(session, epoch+1)
-                break
+#                break
 
             path_model = self.param.LOG_DIR_MODEL  + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '_gan.ckpt'
             saver.save(session, path_model)
