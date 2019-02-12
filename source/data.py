@@ -151,8 +151,6 @@ class Dataset:
 
     def next_batch(self, batch_size=50, fake_data=False):
         """Return the next `batch_size` examples from this data set."""
-        # print("self._num_examples: {}".format(self._num_examples))
-        # print("batch_size: {}".format(batch_size))
         assert batch_size < self._num_examples
         start = self._index_in_epoch
         self._index_in_epoch += batch_size
@@ -166,3 +164,4 @@ class Dataset:
             start = 0
             end = batch_size
             return self._images[start:end]
+
