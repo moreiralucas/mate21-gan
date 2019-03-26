@@ -5,6 +5,9 @@ GAN (Generative Neural Networks) implementada durante a disciplina MATE21 do dep
 
 Esta GAN foi utilizada para gerar caracteres numéricos (0 - 9).
 
+![Números](https://farm8.staticflickr.com/7892/40506997733_91d3693991.jpg)
+
+
 Este projeto foi a última tarefa da disciplina MATE21. As tarefas anteriores podem ser encontradas [aqui](https://github.com/moreiralucas/mate21-ufba).
 
 
